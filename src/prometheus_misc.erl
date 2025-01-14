@@ -19,37 +19,52 @@
 
 -spec behaviour_modules(Behaviour :: atom()) -> [atom()] | [].
 behaviour_modules(Behaviour) ->
-  [Module || {Module, Behaviours} <-
-               all_module_attributes(behaviour),
-             lists:member(Behaviour, Behaviours)].
+    [
+        Module
+     || {Module, Behaviours} <-
+            all_module_attributes(behaviour),
+        lists:member(Behaviour, Behaviours)
+    ].
 
 %%====================================================================
 %% Private Parts
 %%====================================================================
 
 all_module_attributes(Name) ->
-  Targets =
-    lists:usort(
-      lists:append(
-        [[{App, Module} || Module <- Modules] ||
-          {App, _, _}   <- application:loaded_applications(),
-          {ok, Modules} <- [application:get_key(App, modules)]])),
-  lists:foldl(
-    fun ({_App, Module}, Acc) ->
-        case lists:append([Atts || {N, Atts} <- module_attributes(Module),
-                                   N =:= Name]) of
-          []   -> Acc;
-          Atts -> [{Module, Atts} | Acc]
-        end
-    end, [], Targets).
+    Targets =
+        lists:usort(
+            lists:append(
+                [
+                    [{App, Module} || Module <- Modules]
+                 || {App, _, _} <- application:loaded_applications(),
+                    {ok, Modules} <- [application:get_key(App, modules)]
+                ]
+            )
+        ),
+    lists:foldl(
+        fun({_App, Module}, Acc) ->
+            case
+                lists:append([
+                    Atts
+                 || {N, Atts} <- module_attributes(Module),
+                    N =:= Name
+                ])
+            of
+                [] -> Acc;
+                Atts -> [{Module, Atts} | Acc]
+            end
+        end,
+        [],
+        Targets
+    ).
 
 module_attributes(Module) ->
-  case catch Module:module_info(attributes) of
-    {'EXIT', {undef, [{Module, module_info, _} | _]}} ->
-      [];
-    {'EXIT', _Reason} ->
-      %% return empty list too
-      [];
-    V ->
-      V
-  end.
+    case catch Module:module_info(attributes) of
+        {'EXIT', {undef, [{Module, module_info, _} | _]}} ->
+            [];
+        {'EXIT', _Reason} ->
+            %% return empty list too
+            [];
+        V ->
+            V
+    end.

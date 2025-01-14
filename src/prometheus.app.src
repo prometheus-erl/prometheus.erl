@@ -1,25 +1,26 @@
-{application, prometheus,
- [{description, "Prometheus.io client in Erlang"},
-  {vsn, "4.11.0"},
-  {registered, []},
-  {mod, { prometheus, []}},
-  {applications,
-   [kernel,
-    stdlib
-   ]},
-  {env,[]},
-  {modules, []},
+{application, prometheus, [
+    {description, "Prometheus.io client in Erlang"},
+    {vsn, "4.11.0"},
+    {registered, []},
+    {mod, {prometheus, []}},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {env, []},
+    {modules, []},
 
-  {description, "Prometheus monitoring system and time series database client in Erlang."},
-  {maintainers, ["Ilya Khaprov"]},
-  {licenses, ["MIT"]},
-  {links, [
-           {"Cowboy exporter/instrumenter", "https://hex.pm/packages/prometheus_cowboy"},
-           {"Ecto Instrumenter", "https://hex.pm/packages/prometheus_ecto"},
-           {"Github", "https://github.com/deadtrickster/prometheus.erl"},
-           {"Inets HTTPD Exporter", "https://hex.pm/packages/prometheus_httpd"},
-           {"Phoenix Instrumenter", "https://hex.pm/packages/prometheus_phoenix"},
-           {"Plugs Instrumenter/Exporter", "https://hex.pm/packages/prometheus_plugs"},
-           {"Process info Collector", "https://hex.pm/packages/prometheus_process_collector"},
-           {"Prometheus.ex", "https://hex.pm/packages/prometheus_ex"}]}
- ]}.
+    {description, "Prometheus monitoring system and time series database client in Erlang."},
+    {maintainers, ["Ilya Khaprov"]},
+    {licenses, ["MIT"]},
+    {links, [
+        {"Cowboy exporter/instrumenter", "https://hex.pm/packages/prometheus_cowboy"},
+        {"Ecto Instrumenter", "https://hex.pm/packages/prometheus_ecto"},
+        {"Github", "https://github.com/deadtrickster/prometheus.erl"},
+        {"Inets HTTPD Exporter", "https://hex.pm/packages/prometheus_httpd"},
+        {"Phoenix Instrumenter", "https://hex.pm/packages/prometheus_phoenix"},
+        {"Plugs Instrumenter/Exporter", "https://hex.pm/packages/prometheus_plugs"},
+        {"Process info Collector", "https://hex.pm/packages/prometheus_process_collector"},
+        {"Prometheus.ex", "https://hex.pm/packages/prometheus_ex"}
+    ]}
+]}.

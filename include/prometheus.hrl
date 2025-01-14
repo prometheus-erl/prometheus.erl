@@ -8,15 +8,19 @@
 
 -define(PROMETHEUS_COUNTER_DEFAULT, 0).
 
--define(PROMETHEUS_STANDARD_METRICS, [prometheus_counter,
-                                      prometheus_gauge,
-                                      prometheus_summary,
-                                      prometheus_quantile_summary,
-                                      prometheus_histogram,
-                                      prometheus_boolean_table]).
+-define(PROMETHEUS_STANDARD_METRICS, [
+    prometheus_counter,
+    prometheus_gauge,
+    prometheus_summary,
+    prometheus_quantile_summary,
+    prometheus_histogram,
+    prometheus_boolean_table
+]).
 
 -define(DEPRECATED(Old, New),
-        error_logger:warning_msg(Old " is deprecated and will soon be removed. "
-                                 "Please use " New " instead.~n")).
+    error_logger:warning_msg(
+        Old " is deprecated and will soon be removed. " "Please use " New " instead.~n"
+    )
+).
 
 -define(METRIC_NAME(A), <<?METRIC_NAME_PREFIX, (prometheus_model_helpers:metric_name(A))/binary>>).

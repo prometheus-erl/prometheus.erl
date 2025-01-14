@@ -10,22 +10,26 @@
 %% @end
 -module(prometheus_registry).
 
--export([collect/2,
-         collectors/1,
-         exists/1,
-         register_collector/1,
-         register_collector/2,
-         register_collectors/1,
-         register_collectors/2,
-         deregister_collector/1,
-         deregister_collector/2,
-         clear/0,
-         clear/1,
-         collector_registeredp/1,
-         collector_registeredp/2]).
+-export([
+    collect/2,
+    collectors/1,
+    exists/1,
+    register_collector/1,
+    register_collector/2,
+    register_collectors/1,
+    register_collectors/2,
+    deregister_collector/1,
+    deregister_collector/2,
+    clear/0,
+    clear/1,
+    collector_registeredp/1,
+    collector_registeredp/2
+]).
 
--export_type([registry/0,
-              collect_callback/0]).
+-export_type([
+    registry/0,
+    collect_callback/0
+]).
 
 -include("prometheus.hrl").
 
@@ -36,7 +40,7 @@
 -type registry() :: atom().
 
 -type collect_callback() ::
-        fun((registry(), prometheus_collector:collector()) -> any()).
+    fun((registry(), prometheus_collector:collector()) -> any()).
 
 %%====================================================================
 %% Macros
@@ -59,21 +63,21 @@
     Name :: atom() | iolist(),
     Result :: boolean() | atom().
 exists(Name) when is_atom(Name) ->
-  case ets:lookup(?PROMETHEUS_REGISTRY_TABLE, Name) of
-    [] -> false;
-    _ -> true
-  end;
+    case ets:lookup(?PROMETHEUS_REGISTRY_TABLE, Name) of
+        [] -> false;
+        _ -> true
+    end;
 exists(Name) when is_list(Name) orelse is_binary(Name) ->
-  try binary_to_existing_atom(iolist_to_binary(Name), utf8) of
-    Atom ->
-      case exists(Atom) of
-        true -> Atom;
-        false -> false
-      end
-  catch
-    error:badarg ->
-      false
-  end.
+    try binary_to_existing_atom(iolist_to_binary(Name), utf8) of
+        Atom ->
+            case exists(Atom) of
+                true -> Atom;
+                false -> false
+            end
+    catch
+        error:badarg ->
+            false
+    end.
 
 %% @doc
 %% Calls `Callback' for each collector with two arguments:
@@ -83,84 +87,94 @@ exists(Name) when is_list(Name) orelse is_binary(Name) ->
     Registry :: prometheus_registry:registry(),
     Callback :: collect_callback().
 collect(Registry, Callback) ->
-  [Callback(Registry, Collector) ||
-    {_, Collector} <- ets:lookup(?TABLE, Registry)],
-  ok.
+    [
+        Callback(Registry, Collector)
+     || {_, Collector} <- ets:lookup(?TABLE, Registry)
+    ],
+    ok.
 
 %% @doc
 %% Returns collectors registered in `Registry'.
 %% @end
--spec collectors(Registry :: prometheus_registry:registry())
-                -> [Collector :: prometheus_collector:collector()].
+-spec collectors(Registry :: prometheus_registry:registry()) ->
+    [Collector :: prometheus_collector:collector()].
 collectors(Registry) ->
-  [Collector || {_, Collector} <- ets:lookup(?TABLE, Registry)].
+    [Collector || {_, Collector} <- ets:lookup(?TABLE, Registry)].
 
 %% @equiv register_collector(default, Collector)
 -spec register_collector(Collector :: prometheus_collector:collector()) -> ok.
 register_collector(Collector) ->
-  register_collector(default, Collector).
+    register_collector(default, Collector).
 
 %% @doc Register a collector.
--spec register_collector(Registry :: prometheus_registry:registry(),
-                         Collector :: prometheus_collector:collector()) -> ok.
+-spec register_collector(
+    Registry :: prometheus_registry:registry(),
+    Collector :: prometheus_collector:collector()
+) -> ok.
 register_collector(Registry, Collector) ->
-  ets:insert(?TABLE, {Registry, Collector}),
-  ok.
+    ets:insert(?TABLE, {Registry, Collector}),
+    ok.
 
--spec register_collectors(Collectors :: [prometheus_collector:collector()])
-                         -> ok.
+-spec register_collectors(Collectors :: [prometheus_collector:collector()]) ->
+    ok.
 %% @equiv register_collectors(default, Collectors)
 register_collectors(Collectors) ->
-  register_collectors(default, Collectors).
+    register_collectors(default, Collectors).
 
 %% @doc Registers collectors list.
--spec register_collectors(Registry :: prometheus_registry:registry(),
-                          Collectors :: [prometheus_collector:collector()])
-                         -> ok.
+-spec register_collectors(
+    Registry :: prometheus_registry:registry(),
+    Collectors :: [prometheus_collector:collector()]
+) ->
+    ok.
 register_collectors(Registry, Collectors) ->
-  [register_collector(Registry, Collector) || Collector <- Collectors],
-  ok.
+    [register_collector(Registry, Collector) || Collector <- Collectors],
+    ok.
 
 %% @equiv deregister_collector(default, Collector)
 -spec deregister_collector(Collector :: prometheus_collector:collector()) -> ok.
 deregister_collector(Collector) ->
-  deregister_collector(default, Collector).
+    deregister_collector(default, Collector).
 
 %% @doc Unregisters a collector.
--spec deregister_collector(Registry :: prometheus_registry:registry(),
-                           Collector :: prometheus_collector:collector()) -> ok.
+-spec deregister_collector(
+    Registry :: prometheus_registry:registry(),
+    Collector :: prometheus_collector:collector()
+) -> ok.
 deregister_collector(Registry, Collector) ->
-  ets:delete_object(?TABLE, {Registry, Collector}),
-  Collector:deregister_cleanup(Registry),
-  ok.
+    ets:delete_object(?TABLE, {Registry, Collector}),
+    Collector:deregister_cleanup(Registry),
+    ok.
 
 %% @equiv clear(default)
 -spec clear() -> ok.
 clear() ->
-  clear(default).
+    clear(default).
 
 %% @doc Unregisters all collectors.
 -spec clear(Registry :: prometheus_registry:registry()) -> ok.
 clear(Registry) ->
-  [Collector:deregister_cleanup(Registry) ||
-    {_, Collector} <- ets:take(?TABLE, Registry)],
-  ok.
+    [
+        Collector:deregister_cleanup(Registry)
+     || {_, Collector} <- ets:take(?TABLE, Registry)
+    ],
+    ok.
 
 %% @equiv collector_registeredp(default, Collector)
 -spec collector_registeredp(Collector) -> boolean() when
     Collector :: prometheus_collector:collector().
 collector_registeredp(Collector) ->
-  collector_registeredp(default, Collector).
+    collector_registeredp(default, Collector).
 
 %% @doc Checks whether `Collector' is registered.
 -spec collector_registeredp(Registry, Collector) -> boolean() when
-    Registry  :: prometheus_registry:registry(),
+    Registry :: prometheus_registry:registry(),
     Collector :: prometheus_collector:collector().
 collector_registeredp(Registry, Collector) ->
-  case ets:match(?TABLE, {Registry, Collector}) of
-    [] -> false;
-    _  -> true
-  end.
+    case ets:match(?TABLE, {Registry, Collector}) of
+        [] -> false;
+        _ -> true
+    end.
 
 %%%===================================================================
 %%% Private functions

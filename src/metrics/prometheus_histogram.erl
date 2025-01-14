@@ -42,40 +42,43 @@
 -module(prometheus_histogram).
 
 %%% metric
--export([new/1,
-         declare/1,
-         deregister/1,
-         deregister/2,
-         set_default/2,
-         observe/2,
-         observe/3,
-         observe/4,
-         observe_n/3,
-         observe_n/4,
-         observe_n/5,
-         pobserve/6,
-         observe_duration/2,
-         observe_duration/3,
-         observe_duration/4,
-         remove/1,
-         remove/2,
-         remove/3,
-         reset/1,
-         reset/2,
-         reset/3,
-         value/1,
-         value/2,
-         value/3,
-         buckets/1,
-         buckets/2,
-         buckets/3,
-         values/2]
-       ).
+-export([
+    new/1,
+    declare/1,
+    deregister/1,
+    deregister/2,
+    set_default/2,
+    observe/2,
+    observe/3,
+    observe/4,
+    observe_n/3,
+    observe_n/4,
+    observe_n/5,
+    pobserve/6,
+    observe_duration/2,
+    observe_duration/3,
+    observe_duration/4,
+    remove/1,
+    remove/2,
+    remove/3,
+    reset/1,
+    reset/2,
+    reset/3,
+    value/1,
+    value/2,
+    value/3,
+    buckets/1,
+    buckets/2,
+    buckets/3,
+    values/2
+]).
 
 %%% collector
--export([deregister_cleanup/1,
-         collect_mf/2,
-         collect_metrics/2]).
+-export([
+    deregister_cleanup/1,
+    collect_mf/2,
+    collect_metrics/2
+]).
 
 -include("prometheus.hrl").
 
@@ -126,8 +129,8 @@
 %% Raises `{invalid_bound, Bound}' error if `Bound' isn't a number.
 %% @end
 new(Spec) ->
-  Spec1 = validate_histogram_spec(Spec),
-  prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec1).
+    Spec1 = validate_histogram_spec(Spec),
+    prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec1).
 
 %% @doc Creates a histogram using `Spec'.
 %% If a histogram with the same `Spec' exists returns `false'.
@@ -153,12 +156,12 @@ new(Spec) ->
 %% Raises `{invalid_bound, Bound}' error if `Bound' isn't a number.
 %% @end
 declare(Spec) ->
-  Spec1 = validate_histogram_spec(Spec),
-  prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec1).
+    Spec1 = validate_histogram_spec(Spec),
+    prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec1).
 
 %% @equiv deregister(default, Name)
 deregister(Name) ->
-  deregister(default, Name).
+    deregister(default, Name).
 
 %% @doc
 %% Removes all histogram series with name `Name' and
@@ -170,28 +173,28 @@ deregister(Name) ->
 %% Otherwise returns `{false, _}'.
 %% @end
 deregister(Registry, Name) ->
-  try
-    MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name),
-    Buckets = prometheus_metric:mf_data(MF),
-    prometheus_metric:deregister_mf(?TABLE, Registry, Name),
-    Select = deregister_select(Registry, Name, Buckets),
-    NumDeleted = ets:select_delete(?TABLE, Select),
-    {true, NumDeleted > 0}
-  catch
-    _:_ -> {false, false}
-  end.
+    try
+        MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name),
+        Buckets = prometheus_metric:mf_data(MF),
+        prometheus_metric:deregister_mf(?TABLE, Registry, Name),
+        Select = deregister_select(Registry, Name, Buckets),
+        NumDeleted = ets:select_delete(?TABLE, Select),
+        {true, NumDeleted > 0}
+    catch
+        _:_ -> {false, false}
+    end.
 
 %% @private
 set_default(Registry, Name) ->
-  insert_placeholders(Registry, Name, []).
+    insert_placeholders(Registry, Name, []).
 
 %% @equiv observe(default, Name, [], Value)
 observe(Name, Value) ->
-  observe(default, Name, [], Value).
+    observe(default, Name, [], Value).
 
 %% @equiv observe(default, Name, LabelValues, Value)
 observe(Name, LabelValues, Value) ->
-  observe(default, Name, LabelValues, Value).
+    observe(default, Name, LabelValues, Value).
 
 %% @doc Observes the given `Value'.
 %%
@@ -202,17 +205,17 @@ observe(Name, LabelValues, Value) ->
 %% mismatch.
 %% @end
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
-  observe_n(Registry, Name, LabelValues, Value, 1);
+    observe_n(Registry, Name, LabelValues, Value, 1);
 observe(_Registry, _Name, _LabelValues, Value) ->
-  erlang:error({invalid_value, Value, "observe accepts only numbers"}).
+    erlang:error({invalid_value, Value, "observe accepts only numbers"}).
 
 %% @equiv observe_n(default, Name, [], Value, Count)
 observe_n(Name, Value, Count) ->
-  observe_n(default, Name, [], Value, Count).
+    observe_n(default, Name, [], Value, Count).
 
 %% @equiv observe_n(default, Name, LabelValues, Value, Count)
 observe_n(Name, LabelValues, Value, Count) ->
-  observe_n(default, Name, LabelValues, Value, Count).
+    observe_n(default, Name, LabelValues, Value, Count).
 
 %% @doc Observes the given `Value' `Count' times.
 %%
@@ -224,67 +227,90 @@ observe_n(Name, LabelValues, Value, Count) ->
 %% mismatch.
 %% @end
 observe_n(Registry, Name, LabelValues, Value, Count) when is_integer(Value), is_integer(Count) ->
-  Key = key(Registry, Name, LabelValues),
-  case ets:lookup(?TABLE, Key) of
-    [Metric] ->
-      BucketPosition = calculate_histogram_bucket_position(Metric, Value),
-      ets:update_counter(?TABLE, Key,
-                         [{?ISUM_POS, Value * Count},
-                          {?BUCKETS_START + BucketPosition, Count}]);
-    [] ->
-      insert_metric(Registry, Name, LabelValues, Value, Count, fun observe_n/5)
-  end,
-  ok;
+    Key = key(Registry, Name, LabelValues),
+    case ets:lookup(?TABLE, Key) of
+        [Metric] ->
+            BucketPosition = calculate_histogram_bucket_position(Metric, Value),
+            ets:update_counter(
+                ?TABLE,
+                Key,
+                [
+                    {?ISUM_POS, Value * Count},
+                    {?BUCKETS_START + BucketPosition, Count}
+                ]
+            );
+        [] ->
+            insert_metric(Registry, Name, LabelValues, Value, Count, fun observe_n/5)
+    end,
+    ok;
 observe_n(Registry, Name, LabelValues, Value, Count) when is_number(Value), is_integer(Count) ->
-  Key = key(Registry, Name, LabelValues),
-  case ets:lookup(?TABLE, Key) of
-    [Metric] ->
-      fobserve_impl(Key, Metric, Value, Count);
-    [] ->
-      insert_metric(Registry, Name, LabelValues, Value, Count, fun observe_n/5)
-  end;
+    Key = key(Registry, Name, LabelValues),
+    case ets:lookup(?TABLE, Key) of
+        [Metric] ->
+            fobserve_impl(Key, Metric, Value, Count);
+        [] ->
+            insert_metric(Registry, Name, LabelValues, Value, Count, fun observe_n/5)
+    end;
 observe_n(_Registry, _Name, _LabelValues, Value, Count) when is_number(Value) ->
-  erlang:error({invalid_count, Count, "observe_n accepts only integer counts"});
+    erlang:error({invalid_count, Count, "observe_n accepts only integer counts"});
 observe_n(_Registry, _Name, _LabelValues, Value, _Count) ->
-  erlang:error({invalid_value, Value, "observe_n accepts only number values"}).
+    erlang:error({invalid_value, Value, "observe_n accepts only number values"}).
 
 %% @private
 pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) when is_integer(Value) ->
-  Key = key(Registry, Name, LabelValues),
-  try
-    ets:update_counter(?TABLE, Key,
-                       [{?ISUM_POS, Value}, {?BUCKETS_START + BucketPos, 1}])
-  catch error:badarg ->
-      insert_metric(Registry, Name, LabelValues, Value,
-                    fun(_, _, _, _) ->
-                        pobserve(Registry, Name, LabelValues, Buckets,
-                                 BucketPos, Value)
-                    end)
-  end,
-  ok;
+    Key = key(Registry, Name, LabelValues),
+    try
+        ets:update_counter(
+            ?TABLE,
+            Key,
+            [{?ISUM_POS, Value}, {?BUCKETS_START + BucketPos, 1}]
+        )
+    catch
+        error:badarg ->
+            insert_metric(
+                Registry,
+                Name,
+                LabelValues,
+                Value,
+                fun(_, _, _, _) ->
+                    pobserve(
+                        Registry,
+                        Name,
+                        LabelValues,
+                        Buckets,
+                        BucketPos,
+                        Value
+                    )
+                end
+            )
+    end,
+    ok;
 pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) when is_number(Value) ->
-  Key = key(Registry, Name, LabelValues),
-  case
-    fobserve_impl(Key, Buckets, BucketPos, Value, 1) of
-    0 ->
-      insert_metric(Registry, Name, LabelValues, Value,
-                    fun(_, _, _, _) ->
-                        fobserve_impl(Key, Buckets, BucketPos, Value, 1)
-                    end);
-    1 ->
-      ok
-  end;
-pobserve(_Registry, _Name, _LabelValues, _Buckets, _Pos,  Value) ->
-  erlang:error({invalid_value, Value, "pobserve accepts only numbers"}).
-
+    Key = key(Registry, Name, LabelValues),
+    case fobserve_impl(Key, Buckets, BucketPos, Value, 1) of
+        0 ->
+            insert_metric(
+                Registry,
+                Name,
+                LabelValues,
+                Value,
+                fun(_, _, _, _) ->
+                    fobserve_impl(Key, Buckets, BucketPos, Value, 1)
+                end
+            );
+        1 ->
+            ok
+    end;
+pobserve(_Registry, _Name, _LabelValues, _Buckets, _Pos, Value) ->
+    erlang:error({invalid_value, Value, "pobserve accepts only numbers"}).
 
 %% @equiv observe_duration(default, Name, [], Fun)
 observe_duration(Name, Fun) ->
-  observe_duration(default, Name, [], Fun).
+    observe_duration(default, Name, [], Fun).
 
 %% @equiv observe_duration(default, Name, LabelValues, Fun)
 observe_duration(Name, LabelValues, Fun) ->
-  observe_duration(default, Name, LabelValues, Fun).
+    observe_duration(default, Name, LabelValues, Fun).
 
 %% @doc Tracks the amount of time spent executing `Fun'.
 %%
@@ -296,22 +322,22 @@ observe_duration(Name, LabelValues, Fun) ->
 %% isn't a function.<br/>
 %% @end
 observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun) ->
-  Start = erlang:monotonic_time(),
-  try
-    Fun()
-  after
-    observe(Registry, Name, LabelValues, erlang:monotonic_time() - Start)
-  end;
+    Start = erlang:monotonic_time(),
+    try
+        Fun()
+    after
+        observe(Registry, Name, LabelValues, erlang:monotonic_time() - Start)
+    end;
 observe_duration(_Regsitry, _Name, _LabelValues, Fun) ->
-  erlang:error({invalid_value, Fun, "observe_duration accepts only functions"}).
+    erlang:error({invalid_value, Fun, "observe_duration accepts only functions"}).
 
 %% @equiv remove(default, Name, [])
 remove(Name) ->
-  remove(default, Name, []).
+    remove(default, Name, []).
 
 %% @equiv remove(default, Name, LabelValues)
 remove(Name, LabelValues) ->
-  remove(default, Name, LabelValues).
+    remove(default, Name, LabelValues).
 
 %% @doc Removes histogram series identified by `Registry', `Name'
 %% and `LabelValues'.
@@ -322,21 +348,27 @@ remove(Name, LabelValues) ->
 %% mismatch.
 %% @end
 remove(Registry, Name, LabelValues) ->
-  prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-  case lists:flatten([ets:take(?TABLE,
-                               {Registry, Name, LabelValues, Scheduler})
-                      || Scheduler <- schedulers_seq()]) of
-    [] -> false;
-    _ -> true
-  end.
+    prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
+    case
+        lists:flatten([
+            ets:take(
+                ?TABLE,
+                {Registry, Name, LabelValues, Scheduler}
+            )
+         || Scheduler <- schedulers_seq()
+        ])
+    of
+        [] -> false;
+        _ -> true
+    end.
 
 %% @equiv reset(default, Name, [])
 reset(Name) ->
-  reset(default, Name, []).
+    reset(default, Name, []).
 
 %% @equiv reset(default, Name, LabelValues)
 reset(Name, LabelValues) ->
-  reset(default, Name, LabelValues).
+    reset(default, Name, LabelValues).
 
 %% @doc Resets the value of the histogram identified by `Registry', `Name'
 %% and `LabelValues'.
@@ -347,26 +379,32 @@ reset(Name, LabelValues) ->
 %% mismatch.
 %% @end
 reset(Registry, Name, LabelValues) ->
-  MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-  Buckets = prometheus_metric:mf_data(MF),
-  UpdateSpec = generate_update_spec(Buckets),
+    MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
+    Buckets = prometheus_metric:mf_data(MF),
+    UpdateSpec = generate_update_spec(Buckets),
 
-  case lists:usort([ets:update_element(?TABLE,
-                                       {Registry, Name, LabelValues, Scheduler},
-                                       [{?ISUM_POS, 0}, {?FSUM_POS, 0}] ++ UpdateSpec)
-                    || Scheduler <- schedulers_seq()]) of
-    [_, _] -> true;
-    [true] -> true;
-    _ -> false
-  end.
+    case
+        lists:usort([
+            ets:update_element(
+                ?TABLE,
+                {Registry, Name, LabelValues, Scheduler},
+                [{?ISUM_POS, 0}, {?FSUM_POS, 0}] ++ UpdateSpec
+            )
+         || Scheduler <- schedulers_seq()
+        ])
+    of
+        [_, _] -> true;
+        [true] -> true;
+        _ -> false
+    end.
 
 %% @equiv value(default, Name, [])
 value(Name) ->
-  value(default, Name, []).
+    value(default, Name, []).
 
 %% @equiv value(default, Name, LabelValues)
 value(Name, LabelValues) ->
-  value(default, Name, LabelValues).
+    value(default, Name, LabelValues).
 
 %% @doc Returns the value of the histogram identified by `Registry', `Name'
 %% and `LabelValues'. If there is no histogram for `LabelValues',
@@ -381,35 +419,37 @@ value(Name, LabelValues) ->
 %% mismatch.
 %% @end
 value(Registry, Name, LabelValues) ->
-  MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
+    MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
 
-  RawValues = [ets:lookup(?TABLE, {Registry, Name, LabelValues, Scheduler})
-               || Scheduler <- schedulers_seq()],
-  case lists:flatten(RawValues) of
-    [] -> undefined;
-    Values -> {reduce_buckets_counters(Values), reduce_sum(MF, Values)}
-  end.
+    RawValues = [
+        ets:lookup(?TABLE, {Registry, Name, LabelValues, Scheduler})
+     || Scheduler <- schedulers_seq()
+    ],
+    case lists:flatten(RawValues) of
+        [] -> undefined;
+        Values -> {reduce_buckets_counters(Values), reduce_sum(MF, Values)}
+    end.
 
 values(Registry, Name) ->
-  case prometheus_metric:check_mf_exists(?TABLE, Registry, Name) of
-    false -> [];
-    MF -> mf_values(Registry, Name, MF)
-  end.
+    case prometheus_metric:check_mf_exists(?TABLE, Registry, Name) of
+        false -> [];
+        MF -> mf_values(Registry, Name, MF)
+    end.
 
 %% @equiv buckets(default, Name, [])
 buckets(Name) ->
-  buckets(default, Name, []).
+    buckets(default, Name, []).
 
 %% @equiv buckets(default, Name, LabelValues)
 buckets(Name, LabelValues) ->
-  buckets(default, Name, LabelValues).
+    buckets(default, Name, LabelValues).
 
 %% @doc Returns buckets of the histogram identified by `Registry', `Name'
 %% and `LabelValues'.
 %% @end
 buckets(Registry, Name, LabelValues) ->
-  MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-  prometheus_metric:mf_data(MF).
+    MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
+    prometheus_metric:mf_data(MF).
 
 %%====================================================================
 %% Collector API
@@ -417,199 +457,231 @@ buckets(Registry, Name, LabelValues) ->
 
 %% @private
 deregister_cleanup(Registry) ->
-  [delete_metrics(Registry, Buckets)
-   || [_, _, _, _, Buckets] <- prometheus_metric:metrics(?TABLE, Registry)],
-  true = prometheus_metric:deregister_mf(?TABLE, Registry),
-  ok.
+    [
+        delete_metrics(Registry, Buckets)
+     || [_, _, _, _, Buckets] <- prometheus_metric:metrics(?TABLE, Registry)
+    ],
+    true = prometheus_metric:deregister_mf(?TABLE, Registry),
+    ok.
 
 %% @private
 collect_mf(Registry, Callback) ->
-  [Callback(create_histogram(Name, Help, {CLabels, Labels, Registry, DU, Buckets})) ||
-    [Name, {Labels, Help}, CLabels, DU, Buckets]
-      <- prometheus_metric:metrics(?TABLE, Registry)],
-  ok.
+    [
+        Callback(create_histogram(Name, Help, {CLabels, Labels, Registry, DU, Buckets}))
+     || [Name, {Labels, Help}, CLabels, DU, Buckets] <-
+            prometheus_metric:metrics(?TABLE, Registry)
+    ],
+    ok.
 
 %% @private
 collect_metrics(Name, {CLabels, Labels, Registry, DU, Bounds}) ->
-  MFValues = load_all_values(Registry, Name, Bounds),
-  LabelValuesMap = reduce_label_values(MFValues),
-  maps:fold(
-    fun(LabelValues, Stat, L) ->
-        [create_histogram_metric(CLabels, Labels, DU, Bounds, LabelValues, Stat)|L]
-    end, [], LabelValuesMap).
+    MFValues = load_all_values(Registry, Name, Bounds),
+    LabelValuesMap = reduce_label_values(MFValues),
+    maps:fold(
+        fun(LabelValues, Stat, L) ->
+            [create_histogram_metric(CLabels, Labels, DU, Bounds, LabelValues, Stat) | L]
+        end,
+        [],
+        LabelValuesMap
+    ).
 
 %%====================================================================
 %% Private Parts
 %%====================================================================
 
 validate_histogram_spec(Spec) ->
-  Labels = prometheus_metric_spec:labels(Spec),
-  validate_histogram_labels(Labels),
-  RBuckets = prometheus_metric_spec:get_value(buckets, Spec, default),
-  Buckets = prometheus_buckets:new(RBuckets),
-  [{data, Buckets}|Spec].
+    Labels = prometheus_metric_spec:labels(Spec),
+    validate_histogram_labels(Labels),
+    RBuckets = prometheus_metric_spec:get_value(buckets, Spec, default),
+    Buckets = prometheus_buckets:new(RBuckets),
+    [{data, Buckets} | Spec].
 
 validate_histogram_labels(Labels) ->
-  [raise_error_if_le_label_found(Label) || Label <- Labels].
+    [raise_error_if_le_label_found(Label) || Label <- Labels].
 
 raise_error_if_le_label_found("le") ->
-  erlang:error({invalid_metric_label_name, "le",
-                "histogram cannot have a label named \"le\""});
+    erlang:error({invalid_metric_label_name, "le", "histogram cannot have a label named \"le\""});
 raise_error_if_le_label_found(Label) ->
-  Label.
+    Label.
 
 insert_metric(Registry, Name, LabelValues, Value, CB) ->
-  insert_placeholders(Registry, Name, LabelValues),
-  CB(Registry, Name, LabelValues, Value).
+    insert_placeholders(Registry, Name, LabelValues),
+    CB(Registry, Name, LabelValues, Value).
 
 insert_metric(Registry, Name, LabelValues, Value, Count, CB) ->
-  insert_placeholders(Registry, Name, LabelValues),
-  CB(Registry, Name, LabelValues, Value, Count).
+    insert_placeholders(Registry, Name, LabelValues),
+    CB(Registry, Name, LabelValues, Value, Count).
 
 fobserve_impl(Key, Metric, Value, Count) ->
-  Buckets = metric_buckets(Metric),
-  BucketPos = calculate_histogram_bucket_position(Metric, Value),
-  fobserve_impl(Key, Buckets, BucketPos, Value, Count).
+    Buckets = metric_buckets(Metric),
+    BucketPos = calculate_histogram_bucket_position(Metric, Value),
+    fobserve_impl(Key, Buckets, BucketPos, Value, Count).
 
 fobserve_impl(Key, Buckets, BucketPos, Value, Count) ->
-  ets:select_replace(?TABLE, generate_select_replace(Key, Buckets, BucketPos, Value, Count)).
+    ets:select_replace(?TABLE, generate_select_replace(Key, Buckets, BucketPos, Value, Count)).
 
 insert_placeholders(Registry, Name, LabelValues) ->
-  MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-  MFBuckets = prometheus_metric:mf_data(MF),
-  DU = prometheus_metric:mf_duration_unit(MF),
-  Fun = fun (Bucket) ->
-            prometheus_time:maybe_convert_to_native(DU, Bucket)
-        end,
-  BoundCounters = lists:duplicate(length(MFBuckets), 0),
-  MetricSpec =
-    [key(Registry, Name, LabelValues), lists:map(Fun, MFBuckets), 0, 0]
-    ++ BoundCounters,
-  ets:insert_new(?TABLE, list_to_tuple(MetricSpec)).
+    MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
+    MFBuckets = prometheus_metric:mf_data(MF),
+    DU = prometheus_metric:mf_duration_unit(MF),
+    Fun = fun(Bucket) ->
+        prometheus_time:maybe_convert_to_native(DU, Bucket)
+    end,
+    BoundCounters = lists:duplicate(length(MFBuckets), 0),
+    MetricSpec =
+        [key(Registry, Name, LabelValues), lists:map(Fun, MFBuckets), 0, 0] ++
+            BoundCounters,
+    ets:insert_new(?TABLE, list_to_tuple(MetricSpec)).
 
 calculate_histogram_bucket_position(Metric, Value) ->
-  Buckets = metric_buckets(Metric),
-  prometheus_buckets:position(Buckets, Value).
+    Buckets = metric_buckets(Metric),
+    prometheus_buckets:position(Buckets, Value).
 
 generate_select_replace(Key, Bounds, BucketPos, Value, Count) ->
-  BoundPlaceholders = gen_query_bound_placeholders(Bounds),
-  HistMatch = list_to_tuple([Key, '$2', '$3', '$4'] ++ BoundPlaceholders),
-  BucketUpdate = lists:sublist(BoundPlaceholders, BucketPos)
-    ++ [{'+', gen_query_placeholder(?BUCKETS_START + BucketPos), Count}]
-    ++ lists:nthtail(BucketPos + 1, BoundPlaceholders),
-  HistUpdate = list_to_tuple([{Key}, '$2', '$3', {'+', '$4', Value * Count}] ++ BucketUpdate),
-  [{HistMatch,
-    [],
-    [{HistUpdate}]}].
+    BoundPlaceholders = gen_query_bound_placeholders(Bounds),
+    HistMatch = list_to_tuple([Key, '$2', '$3', '$4'] ++ BoundPlaceholders),
+    BucketUpdate =
+        lists:sublist(BoundPlaceholders, BucketPos) ++
+            [{'+', gen_query_placeholder(?BUCKETS_START + BucketPos), Count}] ++
+            lists:nthtail(BucketPos + 1, BoundPlaceholders),
+    HistUpdate = list_to_tuple([{Key}, '$2', '$3', {'+', '$4', Value * Count}] ++ BucketUpdate),
+    [{HistMatch, [], [{HistUpdate}]}].
 
 buckets_seq(Buckets) ->
-  lists:seq(?BUCKETS_START, ?BUCKETS_START + length(Buckets) - 1).
+    lists:seq(?BUCKETS_START, ?BUCKETS_START + length(Buckets) - 1).
 
 generate_update_spec(Buckets) ->
-  [{Index, 0} || Index <- buckets_seq(Buckets)].
+    [{Index, 0} || Index <- buckets_seq(Buckets)].
 
 gen_query_placeholder(Index) ->
-  list_to_atom("$" ++ integer_to_list(Index)).
+    list_to_atom("$" ++ integer_to_list(Index)).
 
 gen_query_bound_placeholders(Buckets) ->
-                  [gen_query_placeholder(Index) || Index <- buckets_seq(Buckets)].
+    [gen_query_placeholder(Index) || Index <- buckets_seq(Buckets)].
 
 augment_counters([Start | Counters]) ->
-  augment_counters(Counters, [Start], Start).
+    augment_counters(Counters, [Start], Start).
 
 augment_counters([], LAcc, _CAcc) ->
-  LAcc;
+    LAcc;
 augment_counters([Counter | Counters], LAcc, CAcc) ->
-  augment_counters(Counters, LAcc ++ [CAcc + Counter], CAcc + Counter).
+    augment_counters(Counters, LAcc ++ [CAcc + Counter], CAcc + Counter).
 
 metric_buckets(Metric) ->
-  element(?BOUNDS_POS, Metric).
+    element(?BOUNDS_POS, Metric).
 
 reduce_buckets_counters(Metrics) ->
-  ABuckets =
-    [sub_tuple_to_list(Metric, ?BUCKETS_START,
-                       ?BUCKETS_START + length(metric_buckets(Metric)))
-     || Metric <- Metrics],
-  [lists:sum(Bucket) || Bucket <- transpose(ABuckets)].
+    ABuckets =
+        [
+            sub_tuple_to_list(
+                Metric,
+                ?BUCKETS_START,
+                ?BUCKETS_START + length(metric_buckets(Metric))
+            )
+         || Metric <- Metrics
+        ],
+    [lists:sum(Bucket) || Bucket <- transpose(ABuckets)].
 
-transpose([[]|_]) -> [];
-transpose(M) ->
-  [lists:map(fun hd/1, M) | transpose(lists:map(fun tl/1, M))].
+transpose([[] | _]) -> [];
+transpose(M) -> [lists:map(fun hd/1, M) | transpose(lists:map(fun tl/1, M))].
 
 reduce_sum(Metrics) ->
-  lists:sum([element(?ISUM_POS, Metric) + element(?FSUM_POS, Metric)
-             || Metric <- Metrics]).
+    lists:sum([
+        element(?ISUM_POS, Metric) + element(?FSUM_POS, Metric)
+     || Metric <- Metrics
+    ]).
 
 reduce_sum(MF, Metrics) ->
-  DU = prometheus_metric:mf_duration_unit(MF),
-  prometheus_time:maybe_convert_to_du(DU, reduce_sum(Metrics)).
+    DU = prometheus_metric:mf_duration_unit(MF),
+    prometheus_time:maybe_convert_to_du(DU, reduce_sum(Metrics)).
 
 create_histogram_metric(CLabels, Labels, DU, Bounds, LabelValues, [ISum, FSum | Buckets]) ->
-  BCounters = augment_counters(Buckets),
-  Bounds1 = lists:zipwith(fun(Bound, Bucket) ->
-                              {Bound, Bucket}
-                          end,
-                          Bounds, BCounters),
+    BCounters = augment_counters(Buckets),
+    Bounds1 = lists:zipwith(
+        fun(Bound, Bucket) ->
+            {Bound, Bucket}
+        end,
+        Bounds,
+        BCounters
+    ),
 
-  prometheus_model_helpers:histogram_metric(
-    CLabels ++ lists:zip(Labels, LabelValues),
-    Bounds1,
-    lists:last(BCounters),
-    prometheus_time:maybe_convert_to_du(DU, ISum + FSum)).
+    prometheus_model_helpers:histogram_metric(
+        CLabels ++ lists:zip(Labels, LabelValues),
+        Bounds1,
+        lists:last(BCounters),
+        prometheus_time:maybe_convert_to_du(DU, ISum + FSum)
+    ).
 
 load_all_values(Registry, Name, Bounds) ->
-  BoundPlaceholders = gen_query_bound_placeholders(Bounds),
-  QuerySpec = [{Registry, Name, '$1', '_'}, '_', '$3', '$4'] ++ BoundPlaceholders,
+    BoundPlaceholders = gen_query_bound_placeholders(Bounds),
+    QuerySpec = [{Registry, Name, '$1', '_'}, '_', '$3', '$4'] ++ BoundPlaceholders,
 
-  ets:match(?TABLE, list_to_tuple(QuerySpec)).
+    ets:match(?TABLE, list_to_tuple(QuerySpec)).
 
 deregister_select(Registry, Name, Buckets) ->
-  BoundCounters = lists:duplicate(length(Buckets), '_'),
-  MetricSpec = [{Registry, Name, '_', '_'}, '_', '_', '_'] ++ BoundCounters,
-  [{list_to_tuple(MetricSpec), [], [true]}].
+    BoundCounters = lists:duplicate(length(Buckets), '_'),
+    MetricSpec = [{Registry, Name, '_', '_'}, '_', '_', '_'] ++ BoundCounters,
+    [{list_to_tuple(MetricSpec), [], [true]}].
 
 delete_metrics(Registry, Buckets) ->
-  BoundCounters = lists:duplicate(length(Buckets), '_'),
-  MetricSpec = [{Registry, '_', '_', '_'}, '_', '_', '_'] ++ BoundCounters,
-  ets:match_delete(?TABLE, list_to_tuple(MetricSpec)).
+    BoundCounters = lists:duplicate(length(Buckets), '_'),
+    MetricSpec = [{Registry, '_', '_', '_'}, '_', '_', '_'] ++ BoundCounters,
+    ets:match_delete(?TABLE, list_to_tuple(MetricSpec)).
 
 sub_tuple_to_list(Tuple, Pos, Size) when Pos < Size ->
-  [element(Pos, Tuple) | sub_tuple_to_list(Tuple, Pos + 1, Size)];
-sub_tuple_to_list(_Tuple, _Pos, _Size) -> [].
+    [element(Pos, Tuple) | sub_tuple_to_list(Tuple, Pos + 1, Size)];
+sub_tuple_to_list(_Tuple, _Pos, _Size) ->
+    [].
 
 schedulers_seq() ->
-  lists:seq(0, ?WIDTH-1).
+    lists:seq(0, ?WIDTH - 1).
 
 key(Registry, Name, LabelValues) ->
-  X = erlang:system_info(scheduler_id),
-  Rnd = X band (?WIDTH-1),
-  {Registry, Name, LabelValues, Rnd}.
+    X = erlang:system_info(scheduler_id),
+    Rnd = X band (?WIDTH - 1),
+    {Registry, Name, LabelValues, Rnd}.
 
 reduce_label_values(MFValues) ->
-  lists:foldl(
-    fun([Labels | V], ResAcc) when is_map_key(Labels, ResAcc) ->
-        PrevSum = maps:get(Labels, ResAcc),
-        ResAcc#{Labels => [lists:sum(C) || C <- transpose([PrevSum, V])]};
-       ([Labels | V], ResAcc) ->
-        ResAcc#{Labels => V}
-    end, #{}, MFValues).
+    lists:foldl(
+        fun
+            ([Labels | V], ResAcc) when is_map_key(Labels, ResAcc) ->
+                PrevSum = maps:get(Labels, ResAcc),
+                ResAcc#{Labels => [lists:sum(C) || C <- transpose([PrevSum, V])]};
+            ([Labels | V], ResAcc) ->
+                ResAcc#{Labels => V}
+        end,
+        #{},
+        MFValues
+    ).
 
 mf_values(Registry, Name, MF) ->
-  DU = prometheus_metric:mf_duration_unit(MF),
-  Labels = prometheus_metric:mf_labels(MF),
-  Bounds = prometheus_metric:mf_data(MF),
+    DU = prometheus_metric:mf_duration_unit(MF),
+    Labels = prometheus_metric:mf_labels(MF),
+    Bounds = prometheus_metric:mf_data(MF),
 
-  MFValues = load_all_values(Registry, Name, Bounds),
-  LabelValuesMap = reduce_label_values(MFValues),
-  maps:fold(
-    fun(LabelValues, [ISum, FSum | BCounters], L) ->
-        Bounds1 = lists:zipwith(fun(Bound, Bucket) ->
-                                    {Bound, Bucket}
-                                end,
-                                Bounds, BCounters),
-        [{lists:zip(Labels, LabelValues),  Bounds1,
-          prometheus_time:maybe_convert_to_du(DU, ISum + FSum)}|L]
-    end, [], LabelValuesMap).
+    MFValues = load_all_values(Registry, Name, Bounds),
+    LabelValuesMap = reduce_label_values(MFValues),
+    maps:fold(
+        fun(LabelValues, [ISum, FSum | BCounters], L) ->
+            Bounds1 = lists:zipwith(
+                fun(Bound, Bucket) ->
+                    {Bound, Bucket}
+                end,
+                Bounds,
+                BCounters
+            ),
+            [
+                {
+                    lists:zip(Labels, LabelValues),
+                    Bounds1,
+                    prometheus_time:maybe_convert_to_du(DU, ISum + FSum)
+                }
+                | L
+            ]
+        end,
+        [],
+        LabelValuesMap
+    ).
 
 create_histogram(Name, Help, Data) ->
-  prometheus_model_helpers:create_mf(Name, Help, histogram, ?MODULE, Data).
+    prometheus_model_helpers:create_mf(Name, Help, histogram, ?MODULE, Data).

@@ -114,8 +114,10 @@
 
 -module(prometheus_vm_statistics_collector).
 
--export([deregister_cleanup/1,
-         collect_mf/2]).
+-export([
+    deregister_cleanup/1,
+    collect_mf/2
+]).
 
 -import(prometheus_model_helpers, [create_mf/4]).
 
@@ -141,90 +143,80 @@ deregister_cleanup(_) -> ok.
     Callback :: prometheus_collector:callback().
 %% @private
 collect_mf(_Registry, Callback) ->
-  Metrics = metrics(),
-  EnabledMetrics = enabled_metrics(),
-  [add_metric_family(Metric, Callback)
-   || {Name, _, _, _}=Metric <- Metrics, metric_enabled(Name, EnabledMetrics)],
-  ok.
+    Metrics = metrics(),
+    EnabledMetrics = enabled_metrics(),
+    [
+        add_metric_family(Metric, Callback)
+     || {Name, _, _, _} = Metric <- Metrics, metric_enabled(Name, EnabledMetrics)
+    ],
+    ok.
 
 add_metric_family({Name, Type, Help, Metrics}, Callback) ->
-  Callback(create_mf(?METRIC_NAME(Name), Help, Type, Metrics)).
+    Callback(create_mf(?METRIC_NAME(Name), Help, Type, Metrics)).
 
 %%====================================================================
 %% Private Parts
 %%====================================================================
 
 metrics() ->
-  {{input, Input}, {output, Output}} = erlang:statistics(io),
-  {ContextSwitches, _} = erlang:statistics(context_switches),
-  [DirtyCPURunQueueLength, DirtyIORunQueueLength] = dirty_stat(),
-  {NumberOfGCs, WordsReclaimed, _} = erlang:statistics(garbage_collection),
-  WordSize = erlang:system_info(wordsize),
-  {ReductionsTotal, _} = erlang:statistics(reductions),
-  RunQueuesLength = erlang:statistics(run_queue),
-  {Runtime, _} = erlang:statistics(runtime),
-  {WallclockTime, _} = erlang:statistics(wall_clock),
+    {{input, Input}, {output, Output}} = erlang:statistics(io),
+    {ContextSwitches, _} = erlang:statistics(context_switches),
+    [DirtyCPURunQueueLength, DirtyIORunQueueLength] = dirty_stat(),
+    {NumberOfGCs, WordsReclaimed, _} = erlang:statistics(garbage_collection),
+    WordSize = erlang:system_info(wordsize),
+    {ReductionsTotal, _} = erlang:statistics(reductions),
+    RunQueuesLength = erlang:statistics(run_queue),
+    {Runtime, _} = erlang:statistics(runtime),
+    {WallclockTime, _} = erlang:statistics(wall_clock),
 
-  [{bytes_output_total, counter,
-    "Total number of bytes output to ports.",
-    Output},
-   {bytes_received_total, counter,
-    "Total number of bytes received through ports.",
-    Input},
-   {context_switches, counter,
-    "Total number of context switches "
-    "since the system started.",
-    ContextSwitches},
-   {dirty_cpu_run_queue_length, gauge,
-    "Length of the dirty CPU run-queue.",
-    DirtyCPURunQueueLength},
-   {dirty_io_run_queue_length, gauge,
-    "Length of the dirty IO run-queue.",
-    DirtyIORunQueueLength},
-   {garbage_collection_number_of_gcs, counter,
-    "Garbage collection: number of GCs.",
-    NumberOfGCs},
-   {garbage_collection_bytes_reclaimed, counter,
-    "Garbage collection: bytes reclaimed.",
-    WordsReclaimed * WordSize},
-   {garbage_collection_words_reclaimed, counter,
-    "Garbage collection: words reclaimed.",
-    WordsReclaimed},
-   {reductions_total, counter,
-    "Total reductions.",
-    ReductionsTotal},
-   {run_queues_length, gauge, %% TODO: 4.x remove _total
-    "Length of normal run-queues.",
-    RunQueuesLength},
-   {runtime_milliseconds, counter,
-    "The sum of the runtime for all threads "
-    "in the Erlang runtime system. "
-    "Can be greater than wall clock time.",
-    Runtime},
-   {wallclock_time_milliseconds, counter,
-    "Information about wall clock. "
-    "Same as erlang_vm_statistics_runtime_milliseconds "
-    "except that real time is measured.",
-    WallclockTime}].
+    [
+        {bytes_output_total, counter, "Total number of bytes output to ports.", Output},
+        {bytes_received_total, counter, "Total number of bytes received through ports.", Input},
+        {context_switches, counter,
+            "Total number of context switches "
+            "since the system started.", ContextSwitches},
+        {dirty_cpu_run_queue_length, gauge, "Length of the dirty CPU run-queue.",
+            DirtyCPURunQueueLength},
+        {dirty_io_run_queue_length, gauge, "Length of the dirty IO run-queue.",
+            DirtyIORunQueueLength},
+        {garbage_collection_number_of_gcs, counter, "Garbage collection: number of GCs.",
+            NumberOfGCs},
+        {garbage_collection_bytes_reclaimed, counter, "Garbage collection: bytes reclaimed.",
+            WordsReclaimed * WordSize},
+        {garbage_collection_words_reclaimed, counter, "Garbage collection: words reclaimed.",
+            WordsReclaimed},
+        {reductions_total, counter, "Total reductions.", ReductionsTotal},
+        %% TODO: 4.x remove _total
+        {run_queues_length, gauge, "Length of normal run-queues.", RunQueuesLength},
+        {runtime_milliseconds, counter,
+            "The sum of the runtime for all threads "
+            "in the Erlang runtime system. "
+            "Can be greater than wall clock time.", Runtime},
+        {wallclock_time_milliseconds, counter,
+            "Information about wall clock. "
+            "Same as erlang_vm_statistics_runtime_milliseconds "
+            "except that real time is measured.", WallclockTime}
+    ].
 
 -ifdef(recent_otp).
 dirty_stat() ->
-  try
-    SO = erlang:system_info(schedulers_online),
-    RQ = erlang:statistics(run_queue_lengths_all),
-    case length(RQ) > SO of
-      true -> lists:sublist(RQ, length(RQ) - 1, 2);
-      false -> [undefined, undefined]
-    end
-  catch _:_ -> [undefined, undefined]
-  end.
+    try
+        SO = erlang:system_info(schedulers_online),
+        RQ = erlang:statistics(run_queue_lengths_all),
+        case length(RQ) > SO of
+            true -> lists:sublist(RQ, length(RQ) - 1, 2);
+            false -> [undefined, undefined]
+        end
+    catch
+        _:_ -> [undefined, undefined]
+    end.
 -else.
 dirty_stat() ->
-  [undefined, undefined].
+    [undefined, undefined].
 -endif.
 
 enabled_metrics() ->
-  application:get_env(prometheus, vm_statistics_collector_metrics, all).
+    application:get_env(prometheus, vm_statistics_collector_metrics, all).
 
 metric_enabled(Name, Metrics) ->
-  Metrics =:= all orelse lists:member(Name, Metrics).
+    Metrics =:= all orelse lists:member(Name, Metrics).

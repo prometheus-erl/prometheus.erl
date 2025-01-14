@@ -162,8 +162,10 @@
 %% @end
 -module(prometheus_vm_msacc_collector).
 
--export([deregister_cleanup/1,
-         collect_mf/2]).
+-export([
+    deregister_cleanup/1,
+    collect_mf/2
+]).
 
 -import(prometheus_model_helpers, [create_mf/4]).
 
@@ -189,88 +191,86 @@ deregister_cleanup(_) -> ok.
     Callback :: prometheus_collector:callback().
 %% @private
 collect_mf(_Registry, Callback) ->
-  Metrics = metrics(),
-  EnabledMetrics = enabled_metrics(),
-  [add_metric_family(Metric, Callback)
-   || {Name, _, _, _}=Metric <- Metrics, metric_enabled(Name, EnabledMetrics)],
-  ok.
+    Metrics = metrics(),
+    EnabledMetrics = enabled_metrics(),
+    [
+        add_metric_family(Metric, Callback)
+     || {Name, _, _, _} = Metric <- Metrics, metric_enabled(Name, EnabledMetrics)
+    ],
+    ok.
 
 add_metric_family({Name, Type, Help, Metrics}, Callback) ->
-  Callback(create_mf(?METRIC_NAME(Name), Help, Type, Metrics)).
+    Callback(create_mf(?METRIC_NAME(Name), Help, Type, Metrics)).
 
 %%====================================================================
 %% Private Parts
 %%====================================================================
 
 metrics() ->
-  Data = erlang:statistics(microstate_accounting),
-  SecondAsPerfCounter = erlang:convert_time_unit(1, second, perf_counter),
-  [
-   %% Base states.
-   {aux_seconds_total, counter,
-    "Total time in seconds spent handling auxiliary jobs.",
-    metric(aux, Data, SecondAsPerfCounter)},
-   {check_io_seconds_total, counter,
-    "Total time in seconds spent checking for new I/O events.",
-    metric(check_io, Data, SecondAsPerfCounter)},
-   {emulator_seconds_total, counter,
-    "Total time in seconds spent executing Erlang processes.",
-    metric(emulator, Data, SecondAsPerfCounter)},
-   {gc_seconds_total, counter,
-    "Total time in seconds spent doing garbage collection. "
-    "When extra states are enabled this is the time spent "
-    "doing non-fullsweep garbage collections.",
-    metric(gc, Data, SecondAsPerfCounter)},
-   {other_seconds_total, counter,
-    "Total time in seconds spent doing unaccounted things.",
-    metric(other, Data, SecondAsPerfCounter)},
-   {port_seconds_total, counter,
-    "Total time in seconds spent executing ports.",
-    metric(port, Data, SecondAsPerfCounter)},
-   {sleep_seconds_total, counter,
-    "Total time in seconds spent sleeping.",
-    metric(sleep, Data, SecondAsPerfCounter)},
-   %% Extra states.
-   {alloc_seconds_total, counter,
-    "Total time in seconds spent managing memory. "
-    "Without extra states this time is spread out over all other states.",
-    metric(alloc, Data, SecondAsPerfCounter)},
-   {bif_seconds_total, counter,
-    "Total time in seconds spent in BIFs. "
-    "Without extra states this time is part of the 'emulator' state.",
-    metric(bif, Data, SecondAsPerfCounter)},
-   {busy_wait_seconds_total, counter,
-    "Total time in seconds spent busy waiting. "
-    "Without extra states this time is part of the 'other' state.",
-    metric(busy_wait, Data, SecondAsPerfCounter)},
-   {ets_seconds_total, counter,
-    "Total time in seconds spent executing ETS BIFs. "
-    "Without extra states this time is part of the 'emulator' state.",
-    metric(ets, Data, SecondAsPerfCounter)},
-   {gc_full_seconds_total, counter,
-    "Total time in seconds spent doing fullsweep garbage collection. "
-    "Without extra states this time is part of the 'gc' state.",
-    metric(gc_full, Data, SecondAsPerfCounter)},
-   {nif_seconds_total, counter,
-    "Total time in seconds spent in NIFs. "
-    "Without extra states this time is part of the 'emulator' state.",
-    metric(nif, Data, SecondAsPerfCounter)},
-   {send_seconds_total, counter,
-    "Total time in seconds spent sending messages (processes only). "
-    "Without extra states this time is part of the 'emulator' state.",
-    metric(send, Data, SecondAsPerfCounter)},
-   {timers_seconds_total, counter,
-    "Total time in seconds spent managing timers. "
-    "Without extra states this time is part of the 'other' state.",
-    metric(timers, Data, SecondAsPerfCounter)}
-  ].
+    Data = erlang:statistics(microstate_accounting),
+    SecondAsPerfCounter = erlang:convert_time_unit(1, second, perf_counter),
+    [
+        %% Base states.
+        {aux_seconds_total, counter, "Total time in seconds spent handling auxiliary jobs.",
+            metric(aux, Data, SecondAsPerfCounter)},
+        {check_io_seconds_total, counter,
+            "Total time in seconds spent checking for new I/O events.",
+            metric(check_io, Data, SecondAsPerfCounter)},
+        {emulator_seconds_total, counter, "Total time in seconds spent executing Erlang processes.",
+            metric(emulator, Data, SecondAsPerfCounter)},
+        {gc_seconds_total, counter,
+            "Total time in seconds spent doing garbage collection. "
+            "When extra states are enabled this is the time spent "
+            "doing non-fullsweep garbage collections.", metric(gc, Data, SecondAsPerfCounter)},
+        {other_seconds_total, counter, "Total time in seconds spent doing unaccounted things.",
+            metric(other, Data, SecondAsPerfCounter)},
+        {port_seconds_total, counter, "Total time in seconds spent executing ports.",
+            metric(port, Data, SecondAsPerfCounter)},
+        {sleep_seconds_total, counter, "Total time in seconds spent sleeping.",
+            metric(sleep, Data, SecondAsPerfCounter)},
+        %% Extra states.
+        {alloc_seconds_total, counter,
+            "Total time in seconds spent managing memory. "
+            "Without extra states this time is spread out over all other states.",
+            metric(alloc, Data, SecondAsPerfCounter)},
+        {bif_seconds_total, counter,
+            "Total time in seconds spent in BIFs. "
+            "Without extra states this time is part of the 'emulator' state.",
+            metric(bif, Data, SecondAsPerfCounter)},
+        {busy_wait_seconds_total, counter,
+            "Total time in seconds spent busy waiting. "
+            "Without extra states this time is part of the 'other' state.",
+            metric(busy_wait, Data, SecondAsPerfCounter)},
+        {ets_seconds_total, counter,
+            "Total time in seconds spent executing ETS BIFs. "
+            "Without extra states this time is part of the 'emulator' state.",
+            metric(ets, Data, SecondAsPerfCounter)},
+        {gc_full_seconds_total, counter,
+            "Total time in seconds spent doing fullsweep garbage collection. "
+            "Without extra states this time is part of the 'gc' state.",
+            metric(gc_full, Data, SecondAsPerfCounter)},
+        {nif_seconds_total, counter,
+            "Total time in seconds spent in NIFs. "
+            "Without extra states this time is part of the 'emulator' state.",
+            metric(nif, Data, SecondAsPerfCounter)},
+        {send_seconds_total, counter,
+            "Total time in seconds spent sending messages (processes only). "
+            "Without extra states this time is part of the 'emulator' state.",
+            metric(send, Data, SecondAsPerfCounter)},
+        {timers_seconds_total, counter,
+            "Total time in seconds spent managing timers. "
+            "Without extra states this time is part of the 'other' state.",
+            metric(timers, Data, SecondAsPerfCounter)}
+    ].
 
 metric(Counter, Data, SecondAsPerfCounter) ->
-  [{[{type, Type}, {id, ID}], Value / SecondAsPerfCounter}
-   || #{type := Type, id := ID, counters := #{Counter := Value}} <- Data].
+    [
+        {[{type, Type}, {id, ID}], Value / SecondAsPerfCounter}
+     || #{type := Type, id := ID, counters := #{Counter := Value}} <- Data
+    ].
 
 enabled_metrics() ->
-  application:get_env(prometheus, vm_msacc_collector_metrics, all).
+    application:get_env(prometheus, vm_msacc_collector_metrics, all).
 
 metric_enabled(Name, Metrics) ->
-  Metrics =:= all orelse lists:member(Name, Metrics).
+    Metrics =:= all orelse lists:member(Name, Metrics).

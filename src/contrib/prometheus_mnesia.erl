@@ -3,9 +3,11 @@
 %% @end
 -module(prometheus_mnesia).
 
--export([table_disk_size/1,
-         table_disk_size/2,
-         tm_info/0]).
+-export([
+    table_disk_size/1,
+    table_disk_size/2,
+    tm_info/0
+]).
 
 %%====================================================================
 %% Macros
@@ -18,11 +20,11 @@
 %%====================================================================
 
 %% @equiv table_disk_size(mnesia:system_info(directory), Table)
--spec table_disk_size( Table) -> Size when
+-spec table_disk_size(Table) -> Size when
     Table :: file:name_all(),
     Size :: non_neg_integer().
 table_disk_size(Table) ->
-  table_disk_size(mnesia:system_info(directory), Table).
+    table_disk_size(mnesia:system_info(directory), Table).
 
 %% @doc
 %% Returns sum of all mnesia files for the given `Table' in bytes.
@@ -44,10 +46,14 @@ table_disk_size(Table) ->
     Table :: file:name_all(),
     Size :: non_neg_integer().
 table_disk_size(Dir, Table) ->
-  lists:sum(lists:map(fun(Ext) ->
-                          filelib:file_size(table_path(Dir, Table, Ext))
-                      end,
-                      ?EXTS)).
+    lists:sum(
+        lists:map(
+            fun(Ext) ->
+                filelib:file_size(table_path(Dir, Table, Ext))
+            end,
+            ?EXTS
+        )
+    ).
 
 %% @doc
 %% Returns {PCount, CCount} tuple, where
@@ -59,14 +65,14 @@ table_disk_size(Dir, Table) ->
     Ps :: non_neg_integer(),
     Cs :: non_neg_integer().
 tm_info() ->
-  case mnesia_tm:get_info(1000) of
-    {info, Ps, Cs} -> {length(Ps), length(Cs)};
-    _ -> {undefined, undefined}
-  end.
+    case mnesia_tm:get_info(1000) of
+        {info, Ps, Cs} -> {length(Ps), length(Cs)};
+        _ -> {undefined, undefined}
+    end.
 
 %%====================================================================
 %% Private Parts
 %%====================================================================
 
 table_path(Dir, Table, Ext) ->
-  filename:join(Dir, [Table, Ext]).
+    filename:join(Dir, [Table, Ext]).

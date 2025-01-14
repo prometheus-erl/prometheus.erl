@@ -1,17 +1,23 @@
 -module(prometheus_buckets).
 
--export([new/0,
-         new/1,
+-export([
+    new/0,
+    new/1,
 
-         position/2]).
+    position/2
+]).
 
--export_type([bucket_bound/0,
-              buckets/0]).
+-export_type([
+    bucket_bound/0,
+    buckets/0
+]).
 
 -ifdef(TEST).
--export([default/0,
-         exponential/3,
-         linear/3]).
+-export([
+    default/0,
+    exponential/3,
+    linear/3
+]).
 -endif.
 
 %%====================================================================
@@ -26,41 +32,41 @@
 %%====================================================================
 
 new() ->
-  default() ++ [infinity].
+    default() ++ [infinity].
 
 %% @doc
 %% Histogram buckets constructor
 %% @end
 new([]) ->
-  erlang:error({no_buckets, []});
+    erlang:error({no_buckets, []});
 new(undefined) ->
-  erlang:error({no_buckets, undefined});
+    erlang:error({no_buckets, undefined});
 new(default) ->
-  default() ++ [infinity];
+    default() ++ [infinity];
 new({linear, Start, Step, Count}) ->
-  linear(Start, Step, Count) ++ [infinity];
+    linear(Start, Step, Count) ++ [infinity];
 new({exponential, Start, Factor, Count}) ->
-  exponential(Start, Factor, Count) ++ [infinity];
+    exponential(Start, Factor, Count) ++ [infinity];
 new(RawBuckets) when is_list(RawBuckets) ->
-  Buckets = lists:map(fun validate_bound/1, RawBuckets),
-  case lists:sort(Buckets) of
-    Buckets ->
-      case lists:last(Buckets) of
-        infinity -> Buckets;
-        _ -> Buckets ++ [infinity]
-      end;
-    _ ->
-      erlang:error({invalid_buckets, Buckets, "buckets not sorted"})
-  end;
+    Buckets = lists:map(fun validate_bound/1, RawBuckets),
+    case lists:sort(Buckets) of
+        Buckets ->
+            case lists:last(Buckets) of
+                infinity -> Buckets;
+                _ -> Buckets ++ [infinity]
+            end;
+        _ ->
+            erlang:error({invalid_buckets, Buckets, "buckets not sorted"})
+    end;
 new(Buckets) ->
-  erlang:error({invalid_buckets, Buckets, "not a list"}).
+    erlang:error({invalid_buckets, Buckets, "not a list"}).
 
 validate_bound(Bound) when is_number(Bound) ->
-  Bound;
+    Bound;
 validate_bound(infinity) ->
-  infinity;
+    infinity;
 validate_bound(Bound) ->
-  erlang:error({invalid_bound, Bound}).
+    erlang:error({invalid_bound, Bound}).
 
 %% @doc
 %% Default histogram buckets.
@@ -90,15 +96,16 @@ default() -> [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10].
 %% @end
 -spec exponential(number(), number(), pos_integer()) -> buckets().
 exponential(_Start, _Factor, Count) when Count < 1 ->
-  erlang:error({invalid_value, Count, "Buckets count should be positive"});
+    erlang:error({invalid_value, Count, "Buckets count should be positive"});
 exponential(Start, _Factor, _Count) when Start =< 0 ->
-  erlang:error({invalid_value, Start, "Buckets start should be positive"});
+    erlang:error({invalid_value, Start, "Buckets start should be positive"});
 exponential(_Start, Factor, _Count) when Factor =< 1 ->
-  erlang:error({invalid_value, Factor,
-                "Buckets factor should be greater than 1"});
+    erlang:error({invalid_value, Factor, "Buckets factor should be greater than 1"});
 exponential(Start, Factor, Count) ->
-  [try_to_maintain_integer_bounds(Start*math:pow(Factor, I)) ||
-    I <- lists:seq(0, Count-1)].
+    [
+        try_to_maintain_integer_bounds(Start * math:pow(Factor, I))
+     || I <- lists:seq(0, Count - 1)
+    ].
 
 %% @doc
 %% Creates `Count' buckets, each `Width' wide, where the lowest
@@ -113,43 +120,50 @@ exponential(Start, Factor, Count) ->
 %% @end
 -spec linear(number(), number(), pos_integer()) -> buckets().
 linear(_Start, _Step, Count) when Count < 1 ->
-  erlang:error({invalid_value, Count, "Buckets count should be positive"});
+    erlang:error({invalid_value, Count, "Buckets count should be positive"});
 linear(Start, Step, Count) ->
-  linear(Start, Step, Count, []).
+    linear(Start, Step, Count, []).
 
 position(Buckets, Value) ->
-  position(Buckets, fun(Bound) ->
-                        Value =< Bound
-                    end, 0).
+    position(
+        Buckets,
+        fun(Bound) ->
+            Value =< Bound
+        end,
+        0
+    ).
 
 %%====================================================================
 %% Private Parts
 %%====================================================================
 
 linear(_Current, _Step, 0, Acc) ->
-  lists:reverse(Acc);
+    lists:reverse(Acc);
 linear(Current, Step, Count, Acc) ->
-  linear(try_to_maintain_integer_bounds(Current + Step),
-         Step,
-         Count - 1,
-         [Current|Acc]).
+    linear(
+        try_to_maintain_integer_bounds(Current + Step),
+        Step,
+        Count - 1,
+        [Current | Acc]
+    ).
 
--spec try_to_maintain_integer_bounds(integer()) -> integer();
-                                    (float())   -> integer() | float().
+-spec try_to_maintain_integer_bounds
+    (integer()) -> integer();
+    (float()) -> integer() | float().
 try_to_maintain_integer_bounds(Bound) when is_integer(Bound) -> Bound;
 try_to_maintain_integer_bounds(Bound) when is_float(Bound) ->
-  TBound = trunc(Bound),
-  case TBound == Bound of
-    true  -> TBound;
-    false -> Bound
-  end.
+    TBound = trunc(Bound),
+    case TBound == Bound of
+        true -> TBound;
+        false -> Bound
+    end.
 
 position([], _Pred, _Pos) ->
-  0;
-position([H|L], Pred, Pos) ->
-  case Pred(H) of
-    true ->
-      Pos;
-    false ->
-      position(L, Pred, Pos + 1)
-  end.
+    0;
+position([H | L], Pred, Pos) ->
+    case Pred(H) of
+        true ->
+            Pos;
+        false ->
+            position(L, Pred, Pos + 1)
+    end.

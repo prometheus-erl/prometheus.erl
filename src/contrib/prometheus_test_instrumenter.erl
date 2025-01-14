@@ -5,6 +5,7 @@
 
 -export([setup_instrumenter/0]).
 
+-spec setup_instrumenter() -> ok.
 setup_instrumenter() ->
-  ets:new(prometheus_instrumenter_tests, [set, named_table, public]),
-  ok.
+    ets:new(prometheus_instrumenter_tests, [set, named_table, public]),
+    ok.

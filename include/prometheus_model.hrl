@@ -10,87 +10,127 @@
 -ifndef('LABELPAIR_PB_H').
 -define('LABELPAIR_PB_H', true).
 -record('LabelPair',
-        {name                   :: iodata() | undefined, % = 1
-         value                  :: iodata() | undefined % = 2
-        }).
+    % = 1
+    {
+        name :: iodata() | undefined,
+        % = 2
+        value :: iodata() | undefined
+    }
+).
 -endif.
 
 -ifndef('GAUGE_PB_H').
 -define('GAUGE_PB_H', true).
 -record('Gauge',
-        {value                  :: float() | integer() | infinity | '-infinity' | nan | undefined % = 1
-        }).
+    % = 1
+    {value :: float() | integer() | infinity | '-infinity' | nan | undefined}
+).
 -endif.
 
 -ifndef('COUNTER_PB_H').
 -define('COUNTER_PB_H', true).
 -record('Counter',
-        {value                  :: float() | integer() | infinity | '-infinity' | nan | undefined % = 1
-        }).
+    % = 1
+    {value :: float() | integer() | infinity | '-infinity' | nan | undefined}
+).
 -endif.
 
 -ifndef('QUANTILE_PB_H').
 -define('QUANTILE_PB_H', true).
 -record('Quantile',
-        {quantile               :: float() | integer() | infinity | '-infinity' | nan | undefined, % = 1
-         value                  :: float() | integer() | infinity | '-infinity' | nan | undefined % = 2
-        }).
+    % = 1
+    {
+        quantile :: float() | integer() | infinity | '-infinity' | nan | undefined,
+        % = 2
+        value :: float() | integer() | infinity | '-infinity' | nan | undefined
+    }
+).
 -endif.
 
 -ifndef('SUMMARY_PB_H').
 -define('SUMMARY_PB_H', true).
 -record('Summary',
-        {sample_count           :: non_neg_integer() | undefined, % = 1, 32 bits
-         sample_sum             :: float() | integer() | infinity | '-infinity' | nan | undefined, % = 2
-         quantile = []          :: [prometheus_model:'Quantile'()] | undefined % = 3
-        }).
+    % = 1, 32 bits
+    {
+        sample_count :: non_neg_integer() | undefined,
+        % = 2
+        sample_sum :: float() | integer() | infinity | '-infinity' | nan | undefined,
+        % = 3
+        quantile = [] :: [prometheus_model:'Quantile'()] | undefined
+    }
+).
 -endif.
 
 -ifndef('UNTYPED_PB_H').
 -define('UNTYPED_PB_H', true).
 -record('Untyped',
-        {value                  :: float() | integer() | infinity | '-infinity' | nan | undefined % = 1
-        }).
+    % = 1
+    {value :: float() | integer() | infinity | '-infinity' | nan | undefined}
+).
 -endif.
 
 -ifndef('HISTOGRAM_PB_H').
 -define('HISTOGRAM_PB_H', true).
 -record('Histogram',
-        {sample_count           :: non_neg_integer() | undefined, % = 1, 32 bits
-         sample_sum             :: float() | integer() | infinity | '-infinity' | nan | undefined, % = 2
-         bucket = []            :: [prometheus_model:'Bucket'()] | undefined % = 3
-        }).
+    % = 1, 32 bits
+    {
+        sample_count :: non_neg_integer() | undefined,
+        % = 2
+        sample_sum :: float() | integer() | infinity | '-infinity' | nan | undefined,
+        % = 3
+        bucket = [] :: [prometheus_model:'Bucket'()] | undefined
+    }
+).
 -endif.
 
 -ifndef('BUCKET_PB_H').
 -define('BUCKET_PB_H', true).
 -record('Bucket',
-        {cumulative_count       :: non_neg_integer() | undefined, % = 1, 32 bits
-         upper_bound            :: float() | integer() | infinity | '-infinity' | nan | undefined % = 2
-        }).
+    % = 1, 32 bits
+    {
+        cumulative_count :: non_neg_integer() | undefined,
+        % = 2
+        upper_bound :: float() | integer() | infinity | '-infinity' | nan | undefined
+    }
+).
 -endif.
 
 -ifndef('METRIC_PB_H').
 -define('METRIC_PB_H', true).
 -record('Metric',
-        {label = []             :: [prometheus_model:'LabelPair'()] | undefined, % = 1
-         gauge                  :: prometheus_model:'Gauge'() | undefined, % = 2
-         counter                :: prometheus_model:'Counter'() | undefined, % = 3
-         summary                :: prometheus_model:'Summary'() | undefined, % = 4
-         untyped                :: prometheus_model:'Untyped'() | undefined, % = 5
-         histogram              :: prometheus_model:'Histogram'() | undefined, % = 7
-         timestamp_ms           :: integer() | undefined % = 6, 32 bits
-        }).
+    % = 1
+    {
+        label = [] :: [prometheus_model:'LabelPair'()] | undefined,
+        % = 2
+        gauge :: prometheus_model:'Gauge'() | undefined,
+        % = 3
+        counter :: prometheus_model:'Counter'() | undefined,
+        % = 4
+        summary :: prometheus_model:'Summary'() | undefined,
+        % = 5
+        untyped :: prometheus_model:'Untyped'() | undefined,
+        % = 7
+        histogram :: prometheus_model:'Histogram'() | undefined,
+        % = 6, 32 bits
+        timestamp_ms :: integer() | undefined
+    }
+).
 -endif.
 
 -ifndef('METRICFAMILY_PB_H').
 -define('METRICFAMILY_PB_H', true).
 -record('MetricFamily',
-        {name                   :: iodata() | undefined, % = 1
-         help                   :: iodata() | undefined, % = 2
-         type                   :: 'COUNTER' | 'GAUGE' | 'SUMMARY' | 'UNTYPED' | 'HISTOGRAM' | integer() | undefined, % = 3, enum MetricType
-         metric = []            :: [prometheus_model:'Metric'()] | undefined % = 4
-        }).
+    % = 1
+    {
+        name :: iodata() | undefined,
+        % = 2
+        help :: iodata() | undefined,
+        % = 3, enum MetricType
+        type :: 'COUNTER' | 'GAUGE' | 'SUMMARY' | 'UNTYPED' | 'HISTOGRAM' | integer() | undefined,
+        % = 4
+        metric = [] :: [prometheus_model:'Metric'()] | undefined
+    }
+).
 -endif.
 
 -endif.
