@@ -117,7 +117,10 @@ create_mf(Name, Help, Type, Collector, CollectorData) ->
 %% @doc Equivalent to
 %% {@link gauge_metric/1. `lists:map(fun gauge_metric/1, Values)'}.
 %% @end
-gauge_metrics(Values) -> lists:map(fun gauge_metric/1, Values).
+-spec gauge_metrics(Values) -> [prometheus_model:'Metric'()] when
+    Values :: [gauge()].
+gauge_metrics(Values) ->
+    lists:map(fun gauge_metric/1, Values).
 
 %% @doc
 %% Equivalent to
@@ -144,7 +147,10 @@ gauge_metric(Labels, Value) ->
 %% @doc Equivalent to
 %% {@link untyped_metric/1. `lists:map(fun untyped_metric/1, Values)'}.
 %% @end
-untyped_metrics(Values) -> lists:map(fun untyped_metric/1, Values).
+-spec untyped_metrics(Values) -> [prometheus_model:'Metric'()] when
+    Values :: [untyped()].
+untyped_metrics(Values) ->
+    lists:map(fun untyped_metric/1, Values).
 
 %% @doc
 %% Equivalent to
@@ -171,7 +177,10 @@ untyped_metric(Labels, Value) ->
 %% @doc Equivalent to
 %% {@link boolean_metric/1. `lists:map(fun boolean_metric/1, Values)'}.
 %% @end
-boolean_metrics(Values) -> lists:map(fun boolean_metric/1, Values).
+-spec boolean_metrics(Values) -> [prometheus_model:'Metric'()] when
+    Values :: [pbool()].
+boolean_metrics(Values) ->
+    lists:map(fun boolean_metric/1, Values).
 
 %% @doc
 %% Equivalent to
@@ -212,7 +221,10 @@ boolean_value(Value) ->
 
 %% @doc Equivalent to
 %% {@link counter_metric/1. `lists:map(fun counter_metric/1, Specs)'}.
-counter_metrics(Specs) -> lists:map(fun counter_metric/1, Specs).
+-spec counter_metrics(Specs) -> [prometheus_model:'Metric'()] when
+    Specs :: [counter()].
+counter_metrics(Specs) ->
+    lists:map(fun counter_metric/1, Specs).
 
 %% @doc
 %% Equivalent to
@@ -238,7 +250,10 @@ counter_metric(Labels, Value) ->
 
 %% @doc Equivalent to
 %% {@link summary_metric/1. `lists:map(fun summary_metric/1, Specs)'}.
-summary_metrics(Specs) -> lists:map(fun summary_metric/1, Specs).
+-spec summary_metrics(Specs) -> [prometheus_model:'Metric'()] when
+    Specs :: [summary()].
+summary_metrics(Specs) ->
+    lists:map(fun summary_metric/1, Specs).
 
 %% @doc
 %% Equivalent to
@@ -256,10 +271,17 @@ summary_metric({Count, Sum}) ->
     summary_metric([], Count, Sum).
 
 %% @equiv summary_metric([], Count, Sum)
+-spec summary_metric(Count, Sum) -> prometheus_model:'Metric'() when
+    Count :: non_neg_integer(),
+    Sum :: value().
 summary_metric(Count, Sum) ->
     summary_metric([], Count, Sum).
 
 %% @equiv summary_metric([], Count, Sum, [])
+-spec summary_metric(Count, Sum, Quantiles) -> prometheus_model:'Metric'() when
+    Count :: non_neg_integer(),
+    Sum :: value(),
+    Quantiles :: list().
 summary_metric(Labels, Count, Sum) ->
     summary_metric(Labels, Count, Sum, []).
 
@@ -284,7 +306,10 @@ summary_metric(Labels, Count, Sum, Quantiles) ->
 %% @doc Equivalent to
 %% {@link histogram_metric/1. `lists:map(fun histogram_metric/1, Specs)'}.
 %% @end
-histogram_metrics(Specs) -> lists:map(fun histogram_metric/1, Specs).
+-spec histogram_metrics(Specs) -> [prometheus_model:'Metric'()] when
+    Specs :: [histogram()].
+histogram_metrics(Specs) ->
+    lists:map(fun histogram_metric/1, Specs).
 
 %% @doc
 %% Equivalent to
@@ -299,6 +324,10 @@ histogram_metric({Buckets, Count, Sum}) ->
     histogram_metric([], Buckets, Count, Sum).
 
 %% @equiv histogram_metric([], Buckets, Count, Sum)
+-spec histogram_metric(Buckets, Count, Sum) -> prometheus_model:'Metric'() when
+    Buckets :: buckets(),
+    Count :: non_neg_integer(),
+    Sum :: value().
 histogram_metric(Buckets, Count, Sum) ->
     histogram_metric([], Buckets, Count, Sum).
 
@@ -338,8 +367,12 @@ histogram_metric(Labels, Buckets, Count, Sum) ->
 %% here).
 %% WARNING Works only for text format, protobuf format export will
 %% fail with an error.
-label_pairs(B) when is_binary(B) -> B;
-label_pairs(Labels) -> lists:map(fun label_pair/1, Labels).
+-spec label_pairs(Labels) -> [prometheus_model:'LabelPair'()] when
+    Labels :: labels().
+label_pairs(B) when is_binary(B) ->
+    B;
+label_pairs(Labels) ->
+    lists:map(fun label_pair/1, Labels).
 
 %% @doc
 %% Creates `prometheus_model:'LabelPair'()' from {Name, Value} tuple.
@@ -395,7 +428,9 @@ ensure_list(Val) when is_list(Val) -> Val;
 ensure_list(Val) -> [Val].
 
 %% @private
-filter_undefined_metrics(Metrics) -> lists:filter(fun not_undefined/1, Metrics).
+-spec filter_undefined_metrics([undefined | T]) -> [T].
+filter_undefined_metrics(Metrics) ->
+    lists:filter(fun not_undefined/1, Metrics).
 
 not_undefined(undefined) -> false;
 not_undefined(_) -> true.

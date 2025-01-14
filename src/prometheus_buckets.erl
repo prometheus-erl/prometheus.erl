@@ -1,42 +1,28 @@
 -module(prometheus_buckets).
 
--export([
-    new/0,
-    new/1,
-
-    position/2
-]).
-
--export_type([
-    bucket_bound/0,
-    buckets/0
-]).
+-export([new/0, new/1, position/2]).
 
 -ifdef(TEST).
--export([
-    default/0,
-    exponential/3,
-    linear/3
-]).
+-export([default/0, exponential/3, linear/3]).
 -endif.
-
-%%====================================================================
-%% Types
-%%====================================================================
 
 -type bucket_bound() :: number() | infinity.
 -type buckets() :: [bucket_bound(), ...].
+-type config() ::
+    undefined
+    | default
+    | {linear, number(), number(), pos_integer()}
+    | {exponential, number(), number(), pos_integer()}
+    | buckets().
 
-%%====================================================================
-%% Public API
-%%====================================================================
+-export_type([bucket_bound/0, buckets/0]).
 
+-spec new() -> buckets().
 new() ->
     default() ++ [infinity].
 
-%% @doc
-%% Histogram buckets constructor
-%% @end
+%% @doc Histogram buckets constructor
+-spec new(config()) -> buckets().
 new([]) ->
     erlang:error({no_buckets, []});
 new(undefined) ->
@@ -124,6 +110,7 @@ linear(_Start, _Step, Count) when Count < 1 ->
 linear(Start, Step, Count) ->
     linear(Start, Step, Count, []).
 
+-spec position(buckets(), number()) -> pos_integer().
 position(Buckets, Value) ->
     position(
         Buckets,
@@ -158,6 +145,7 @@ try_to_maintain_integer_bounds(Bound) when is_float(Bound) ->
         false -> Bound
     end.
 
+-spec position(buckets(), fun((bucket_bound()) -> boolean()), pos_integer()) -> pos_integer().
 position([], _Pred, _Pos) ->
     0;
 position([H | L], Pred, Pos) ->

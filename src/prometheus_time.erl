@@ -116,11 +116,23 @@
 %% Public API
 %%====================================================================
 
+-type duration_unit() ::
+    microseconds
+    | milliseconds
+    | seconds
+    | minutes
+    | hours
+    | days
+    | undefined
+    | false.
+
 %% @private
+-spec duration_unit_from_string(binary()) -> duration_unit() | undefined.
 duration_unit_from_string(Str) ->
     duration_unit_from_string(Str, ?DURATION_UNITS).
 
 %% @private
+-spec validate_duration_unit(duration_unit()) -> duration_unit().
 validate_duration_unit(false) ->
     false;
 validate_duration_unit(undefined) ->
@@ -141,6 +153,7 @@ validate_duration_unit(SDU) ->
     end.
 
 %% @private
+-spec maybe_convert_to_native(duration_unit(), infinity | number()) -> infinity | number().
 maybe_convert_to_native(_, infinity) ->
     infinity;
 maybe_convert_to_native(DU, Value) ->
@@ -150,6 +163,7 @@ maybe_convert_to_native(DU, Value) ->
     end.
 
 %% @private
+-spec maybe_convert_to_du(duration_unit(), infinity | number()) -> infinity | number().
 maybe_convert_to_du(_, infinity) ->
     infinity;
 maybe_convert_to_du(DU, Value) ->
@@ -175,6 +189,7 @@ from_native(Value) ->
     erlang:convert_time_unit(trunc(Value), native, nano_seconds).
 
 %% @private
+-spec from_native(number(), duration_unit()) -> number().
 from_native(Value, microseconds) ->
     Nanoseconds = from_native(Value),
     Nanoseconds / 1000;
@@ -199,6 +214,7 @@ to_native(Value) ->
     erlang:convert_time_unit(trunc(Value), nano_seconds, native).
 
 %% @private
+-spec to_native(number(), duration_unit()) -> number().
 to_native(Value, microseconds) ->
     to_native(Value * 1000);
 to_native(Value, milliseconds) ->

@@ -128,6 +128,7 @@
 %% aren't in increasing order.<br/>
 %% Raises `{invalid_bound, Bound}' error if `Bound' isn't a number.
 %% @end
+-spec new(prometheus_metric_spec:spec()) -> ok.
 new(Spec) ->
     Spec1 = validate_histogram_spec(Spec),
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec1).
@@ -155,11 +156,13 @@ new(Spec) ->
 %% aren't in increasing order.<br/>
 %% Raises `{invalid_bound, Bound}' error if `Bound' isn't a number.
 %% @end
+-spec declare(prometheus_metric_spec:spec()) -> boolean().
 declare(Spec) ->
     Spec1 = validate_histogram_spec(Spec),
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec1).
 
 %% @equiv deregister(default, Name)
+-spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
@@ -172,6 +175,8 @@ deregister(Name) ->
 %% Returns `{true, _}' if `Name' was a registered histogram.
 %% Otherwise returns `{false, _}'.
 %% @end
+-spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
+    {boolean(), boolean()}.
 deregister(Registry, Name) ->
     try
         MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name),
@@ -185,14 +190,17 @@ deregister(Registry, Name) ->
     end.
 
 %% @private
+-spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
 set_default(Registry, Name) ->
     insert_placeholders(Registry, Name, []).
 
 %% @equiv observe(default, Name, [], Value)
+-spec observe(prometheus_metric:name(), number()) -> ok.
 observe(Name, Value) ->
     observe(default, Name, [], Value).
 
 %% @equiv observe(default, Name, LabelValues, Value)
+-spec observe(prometheus_metric:name(), list(), number()) -> ok.
 observe(Name, LabelValues, Value) ->
     observe(default, Name, LabelValues, Value).
 
@@ -204,16 +212,19 @@ observe(Name, LabelValues, Value) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec observe(prometheus_registry:registry(), prometheus_metric:name(), list(), number()) -> ok.
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     observe_n(Registry, Name, LabelValues, Value, 1);
 observe(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "observe accepts only numbers"}).
 
 %% @equiv observe_n(default, Name, [], Value, Count)
+-spec observe_n(prometheus_metric:name(), number(), integer()) -> ok.
 observe_n(Name, Value, Count) ->
     observe_n(default, Name, [], Value, Count).
 
 %% @equiv observe_n(default, Name, LabelValues, Value, Count)
+-spec observe_n(prometheus_metric:name(), list(), number(), integer()) -> ok.
 observe_n(Name, LabelValues, Value, Count) ->
     observe_n(default, Name, LabelValues, Value, Count).
 
@@ -226,6 +237,13 @@ observe_n(Name, LabelValues, Value, Count) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec observe_n(
+    prometheus_registry:registry(),
+    prometheus_metric:name(),
+    list(),
+    number(),
+    integer()
+) -> ok.
 observe_n(Registry, Name, LabelValues, Value, Count) when is_integer(Value), is_integer(Count) ->
     Key = key(Registry, Name, LabelValues),
     case ets:lookup(?TABLE, Key) of
@@ -257,6 +275,14 @@ observe_n(_Registry, _Name, _LabelValues, Value, _Count) ->
     erlang:error({invalid_value, Value, "observe_n accepts only number values"}).
 
 %% @private
+-spec pobserve(
+    prometheus_registry:registry(),
+    prometheus_metric:name(),
+    list(),
+    list(),
+    integer(),
+    number()
+) -> ok.
 pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) when is_integer(Value) ->
     Key = key(Registry, Name, LabelValues),
     try
@@ -305,10 +331,12 @@ pobserve(_Registry, _Name, _LabelValues, _Buckets, _Pos, Value) ->
     erlang:error({invalid_value, Value, "pobserve accepts only numbers"}).
 
 %% @equiv observe_duration(default, Name, [], Fun)
+-spec observe_duration(prometheus_metric:name(), fun(() -> term())) -> term().
 observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
 %% @equiv observe_duration(default, Name, LabelValues, Fun)
+-spec observe_duration(prometheus_metric:name(), list(), fun(() -> term())) -> term().
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
 
@@ -321,7 +349,11 @@ observe_duration(Name, LabelValues, Fun) ->
 %% Raises `{invalid_value, Value, Message}' if `Fun'
 %% isn't a function.<br/>
 %% @end
-observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun) ->
+-spec observe_duration(
+    prometheus_registry:registry(), prometheus_metric:name(), list(), fun(() -> term())
+) ->
+    term().
+observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun, 0) ->
     Start = erlang:monotonic_time(),
     try
         Fun()
@@ -332,10 +364,12 @@ observe_duration(_Regsitry, _Name, _LabelValues, Fun) ->
     erlang:error({invalid_value, Fun, "observe_duration accepts only functions"}).
 
 %% @equiv remove(default, Name, [])
+-spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
 %% @equiv remove(default, Name, LabelValues)
+-spec remove(prometheus_metric:name(), list()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -347,6 +381,7 @@ remove(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case
@@ -363,10 +398,12 @@ remove(Registry, Name, LabelValues) ->
     end.
 
 %% @equiv reset(default, Name, [])
+-spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
 %% @equiv reset(default, Name, LabelValues)
+-spec reset(prometheus_metric:name(), list()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -378,6 +415,7 @@ reset(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 reset(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     Buckets = prometheus_metric:mf_data(MF),
@@ -399,10 +437,14 @@ reset(Registry, Name, LabelValues) ->
     end.
 
 %% @equiv value(default, Name, [])
+-spec value(prometheus_metric:name()) ->
+    {number(), infinity | number()} | undefined.
 value(Name) ->
     value(default, Name, []).
 
 %% @equiv value(default, Name, LabelValues)
+-spec value(prometheus_metric:name(), list()) ->
+    {number(), infinity | number()} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -418,6 +460,8 @@ value(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
+    {number(), infinity | number()} | undefined.
 value(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
 
@@ -430,6 +474,7 @@ value(Registry, Name, LabelValues) ->
         Values -> {reduce_buckets_counters(Values), reduce_sum(MF, Values)}
     end.
 
+-spec values(prometheus_registry:registry(), prometheus_metric:name()) -> [{list(), number()}].
 values(Registry, Name) ->
     case prometheus_metric:check_mf_exists(?TABLE, Registry, Name) of
         false -> [];
@@ -437,16 +482,23 @@ values(Registry, Name) ->
     end.
 
 %% @equiv buckets(default, Name, [])
+-spec buckets(prometheus_metric:name()) -> [number()].
 buckets(Name) ->
     buckets(default, Name, []).
 
 %% @equiv buckets(default, Name, LabelValues)
+-spec buckets(prometheus_metric:name(), list()) -> [number()].
 buckets(Name, LabelValues) ->
     buckets(default, Name, LabelValues).
 
 %% @doc Returns buckets of the histogram identified by `Registry', `Name'
 %% and `LabelValues'.
 %% @end
+-spec buckets(
+    prometheus_registry:registry(),
+    prometheus_metric:name(),
+    list()
+) -> [number()].
 buckets(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     prometheus_metric:mf_data(MF).
@@ -456,6 +508,7 @@ buckets(Registry, Name, LabelValues) ->
 %%====================================================================
 
 %% @private
+-spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     [
         delete_metrics(Registry, Buckets)
@@ -465,6 +518,7 @@ deregister_cleanup(Registry) ->
     ok.
 
 %% @private
+-spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
         Callback(create_histogram(Name, Help, {CLabels, Labels, Registry, DU, Buckets}))
@@ -474,6 +528,8 @@ collect_mf(Registry, Callback) ->
     ok.
 
 %% @private
+-spec collect_metrics(prometheus_metric:name(), prometheus_collector:collect_mf_callback()) ->
+    [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry, DU, Bounds}) ->
     MFValues = load_all_values(Registry, Name, Bounds),
     LabelValuesMap = reduce_label_values(MFValues),

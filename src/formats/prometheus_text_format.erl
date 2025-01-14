@@ -107,6 +107,7 @@ registry_collect_callback(Fd, Registry, Collector) ->
     prometheus_collector:collect_mf(Registry, Collector, Callback).
 
 %% @private
+-spec emit_mf_prologue(Fd :: file:fd(), prometheus_model:'MetricFamily'()) -> ok.
 emit_mf_prologue(Fd, #'MetricFamily'{name = Name, help = Help, type = Type}) ->
     Bytes = [
         "# TYPE ",
@@ -122,6 +123,7 @@ emit_mf_prologue(Fd, #'MetricFamily'{name = Name, help = Help, type = Type}) ->
     file:write(Fd, Bytes).
 
 %% @private
+-spec emit_mf_metrics(file:fd(), prometheus_model:'MetricFamily'()) -> ok | {error, term()}.
 emit_mf_metrics(Fd, #'MetricFamily'{name = Name, metric = Metrics}) ->
     %% file:write/2 is an expensive operation, as it goes through a port driver.
     %% Instead a large chunk of bytes is being collected here, in a
@@ -283,6 +285,7 @@ render_series(Name, LString, Value) ->
     >>.
 
 %% @private
+-spec escape_metric_help(iodata()) -> binary().
 escape_metric_help(Help) ->
     escape_string(fun escape_help_char/1, Help).
 

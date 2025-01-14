@@ -189,9 +189,12 @@ collect_mf(Registry, Collector, Callback0) ->
 
 -ifdef(TEST).
 %% @private
+-spec collect_mf_to_list(collector()) -> [prometheus_model:'MetricFamily'()].
 collect_mf_to_list(Collector) ->
     collect_mf_to_list(default, Collector).
 
+-spec collect_mf_to_list(prometheus_registry:registry(), collector()) ->
+    [prometheus_model:'MetricFamily'()].
 collect_mf_to_list(Registry, Collector) ->
     try
         Callback = fun(MF) ->

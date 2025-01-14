@@ -35,20 +35,24 @@
 %%====================================================================
 
 %% @private
+-spec registry(Spec :: spec()) -> any().
 registry(Spec) ->
     get_value(registry, Spec, default).
 
 %% @private
+-spec name(Spec :: spec()) -> any().
 name(Spec) ->
     Name = fetch_value(name, Spec),
     validate_metric_name(Name).
 
 %% @private
+-spec labels(Spec :: spec()) -> list().
 labels(Spec) ->
     Labels = get_value(labels, Spec, []),
     validate_metric_label_names(Labels).
 
 %% @private
+-spec help(Spec :: spec()) -> string().
 help(Spec) ->
     Help = fetch_value(help, Spec),
     validate_metric_help(Help).
@@ -58,6 +62,7 @@ data(Spec) ->
     get_value(data, Spec).
 
 %% @private
+-spec constant_labels(Spec :: spec()) -> list().
 constant_labels(Spec) ->
     case get_value(constant_labels, Spec, #{}) of
         CL when is_map(CL) ->
@@ -68,11 +73,10 @@ constant_labels(Spec) ->
     end.
 
 %% @private
+-spec duration_unit(Spec :: spec()) -> any().
 duration_unit(Spec) ->
     Name = to_string(name(Spec)),
-
     NameDU = prometheus_time:duration_unit_from_string(Name),
-
     case duration_unit_from_spec(Spec) of
         false ->
             undefined;
@@ -92,36 +96,31 @@ duration_unit_from_spec(Spec) ->
     prometheus_time:validate_duration_unit(SDU).
 
 %% @private
+-spec extract_common_params(Spec :: spec()) ->
+    {any(), any(), list(), string(), list(), any(), any()}.
 extract_common_params(Spec) ->
     Registry = registry(Spec),
-
     Name = name(Spec),
-
     Labels = labels(Spec),
-
     Help = help(Spec),
-
     Data = data(Spec),
-
     CallTimeout = constant_labels(Spec),
-
     DurationUnit = duration_unit(Spec),
-
     {Registry, Name, Labels, Help, CallTimeout, DurationUnit, Data}.
 
--spec get_value(Key :: atom(), Spec :: spec()) -> any().
 %% @private
 %% @equiv get_value(Key, Spec, undefined)
+-spec get_value(Key :: atom(), Spec :: spec()) -> any().
 get_value(Key, Spec) ->
     get_value(Key, Spec, undefined).
 
--spec get_value(Key :: atom(), Spec :: spec(), Default :: any()) -> any().
 %% @private
+-spec get_value(Key :: atom(), Spec :: spec(), Default :: any()) -> any().
 get_value(Key, Spec, Default) ->
     proplists:get_value(Key, Spec, Default).
 
--spec fetch_value(Key :: atom(), Spec :: spec()) -> any() | no_return().
 %% @private
+-spec fetch_value(Key :: atom(), Spec :: spec()) -> any() | no_return().
 fetch_value(Key, Spec) ->
     case proplists:get_value(Key, Spec) of
         undefined ->
@@ -135,6 +134,10 @@ fetch_value(Key, Spec) ->
 %%===================================================================
 
 %% @private
+-spec validate_metric_name
+    (atom()) -> atom();
+    (list()) -> list();
+    (binary()) -> binary().
 validate_metric_name(RawName) when is_atom(RawName) ->
     validate_metric_name(RawName, atom_to_list(RawName));
 validate_metric_name(RawName) when is_binary(RawName) ->
@@ -145,6 +148,10 @@ validate_metric_name(RawName) ->
     erlang:error({invalid_metric_name, RawName, "metric name is not a string"}).
 
 %% @private
+-spec validate_metric_name
+    (atom(), list()) -> atom();
+    (list(), list()) -> list();
+    (binary(), list()) -> binary().
 validate_metric_name(RawName, ListName) ->
     case io_lib:printable_unicode_list(ListName) of
         true ->
@@ -162,6 +169,7 @@ validate_metric_name(RawName, ListName) ->
     end.
 
 %% @private
+-spec validate_metric_label_names(list()) -> list().
 validate_metric_label_names(RawLabels) when is_list(RawLabels) ->
     lists:map(fun validate_metric_label_name/1, RawLabels);
 validate_metric_label_names(RawLabels) ->
@@ -196,6 +204,7 @@ validate_metric_label_name_content(RawName) ->
     end.
 
 %% @private
+-spec validate_metric_help(binary() | string()) -> binary() | string().
 validate_metric_help(RawHelp) when is_binary(RawHelp) ->
     validate_metric_help(binary_to_list(RawHelp));
 validate_metric_help(RawHelp) when is_list(RawHelp) ->

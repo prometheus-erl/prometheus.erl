@@ -15,24 +15,13 @@
 
 -include("prometheus.hrl").
 
-%%====================================================================
-%% Macros
-%%====================================================================
-
 -define(SERVER, ?MODULE).
 
-%%====================================================================
-%% API functions
-%%====================================================================
-
+-spec start_link() -> supervisor:startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-%%====================================================================
-%% Supervisor callbacks
-%%====================================================================
-
-%% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
+-spec init([]) -> {ok, {supervisor:sup_flags(), [supervisor:child_spec()]}}.
 init([]) ->
     create_tables(),
     register_collectors(),
@@ -64,6 +53,7 @@ register_collectors() ->
 register_metrics() ->
     [declare_metric(Decl) || Decl <- default_metrics()].
 
+-spec register_metrics([term()]) -> ok.
 register_metrics(Metrics) ->
     DefaultMetrics0 = default_metrics(),
     DefaultMetrics1 = lists:usort(DefaultMetrics0 ++ Metrics),

@@ -104,6 +104,7 @@
 %% Raises `{mf_already_exists, {Registry, Name}, Message}' error if a summary
 %% with the same `Spec' already exists.
 %% @end
+-spec new(prometheus_metric_spec:spec()) -> ok.
 new(Spec) ->
     Spec1 = validate_summary_spec(Spec),
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec1).
@@ -124,11 +125,13 @@ new(Spec) ->
 %% Raises `{invalid_value_error, Value, MessagE}' error if `duration_unit' is
 %% unknown or doesn't match metric name.<br/>
 %% @end
+-spec declare(prometheus_metric_spec:spec()) -> boolean().
 declare(Spec) ->
     Spec1 = validate_summary_spec(Spec),
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec1).
 
 %% @equiv deregister(default, Name)
+-spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
@@ -141,12 +144,15 @@ deregister(Name) ->
 %% Returns `{true, _}' if `Name' was a registered summary.
 %% Otherwise returns `{false, _}'.
 %% @end
+-spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
+    {boolean(), boolean()}.
 deregister(Registry, Name) ->
     MFR = prometheus_metric:deregister_mf(?TABLE, Registry, Name),
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
 %% @private
+-spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
 set_default(Registry, Name) ->
     Configuration = get_configuration(Registry, Name),
     #{compress_limit := CompressLimit} = Configuration,
@@ -159,10 +165,12 @@ set_default(Registry, Name) ->
     }).
 
 %% @equiv observe(default, Name, [], Value)
+-spec observe(prometheus_metric:name(), number()) -> ok.
 observe(Name, Value) ->
     observe(default, Name, [], Value).
 
 %% @equiv observe(default, Name, LabelValues, Value)
+-spec observe(prometheus_metric:name(), list(), number()) -> ok.
 observe(Name, LabelValues, Value) ->
     observe(default, Name, LabelValues, Value).
 
@@ -175,6 +183,7 @@ observe(Name, LabelValues, Value) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec observe(prometheus_registry:registry(), prometheus_metric:name(), list(), number()) -> ok.
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     Key = key(Registry, Name, LabelValues),
     case ets:lookup(?TABLE, Key) of
@@ -191,10 +200,12 @@ observe(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "observe accepts only numbers"}).
 
 %% @equiv observe_duration(default, Name, [], Fun)
+-spec observe_duration(prometheus_metric:name(), fun(() -> term())) -> term().
 observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
 %% @equiv observe_duration(default, Name, LabelValues, Fun)
+-spec observe_duration(prometheus_metric:name(), list(), fun(() -> term())) -> term().
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
 
@@ -207,6 +218,10 @@ observe_duration(Name, LabelValues, Fun) ->
 %% Raises `{invalid_value, Value, Message}' if `Fun'
 %% isn't a function.<br/>
 %% @end
+-spec observe_duration(
+    prometheus_registry:registry(), prometheus_metric:name(), list(), fun(() -> term())
+) ->
+    term().
 observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun) ->
     Start = erlang:monotonic_time(),
     try
@@ -218,10 +233,12 @@ observe_duration(_Regsitry, _Name, _LabelValues, Fun) ->
     erlang:error({invalid_value, Fun, "observe_duration accepts only functions"}).
 
 %% @equiv remove(default, Name, [])
+-spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
 %% @equiv remove(default, Name, LabelValues)
+-spec remove(prometheus_metric:name(), list()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -233,6 +250,7 @@ remove(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case
@@ -249,10 +267,12 @@ remove(Registry, Name, LabelValues) ->
     end.
 
 %% @equiv reset(default, Name, [])
+-spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
 %% @equiv reset(default, Name, LabelValues)
+-spec reset(prometheus_metric:name(), list()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -264,6 +284,7 @@ reset(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 reset(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     Configuration = prometheus_metric:mf_data(MF),
@@ -283,10 +304,12 @@ reset(Registry, Name, LabelValues) ->
     end.
 
 %% @equiv value(default, Name, [])
+-spec value(prometheus_metric:name()) -> {integer(), number()} | undefined.
 value(Name) ->
     value(default, Name, []).
 
 %% @equiv value(default, Name, LabelValues)
+-spec value(prometheus_metric:name(), list()) -> {integer(), number()} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -302,6 +325,8 @@ value(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
+    {integer(), number()} | undefined.
 value(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     DU = prometheus_metric:mf_duration_unit(MF),
@@ -319,6 +344,8 @@ value(Registry, Name, LabelValues) ->
             {Count, prometheus_time:maybe_convert_to_du(DU, Sum), quantile_values(QE, QNs)}
     end.
 
+-spec values(prometheus_registry:registry(), prometheus_metric:name()) ->
+    [prometheus_model:'Summary'()].
 values(Registry, Name) ->
     case prometheus_metric:check_mf_exists(?TABLE, Registry, Name) of
         false ->
@@ -366,12 +393,14 @@ values(Registry, Name) ->
 %%====================================================================
 
 %% @private
+-spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     prometheus_metric:deregister_mf(?TABLE, Registry),
     true = ets:match_delete(?TABLE, {{Registry, '_', '_', '_'}, '_', '_', '_', '_'}),
     ok.
 
 %% @private
+-spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
         Callback(create_summary(Name, Help, {CLabels, Labels, Registry, DU, Data}))
@@ -383,6 +412,8 @@ collect_mf(Registry, Callback) ->
     ok.
 
 %% @private
+-spec collect_metrics(prometheus_metric:name(), prometheus_collector:collect_mf_callback()) ->
+    [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry, DU, Configuration}) ->
     #{quantiles := QNs} = Configuration,
     MFValues = load_all_values(Registry, Name),

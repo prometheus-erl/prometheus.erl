@@ -115,6 +115,7 @@
 %% Raises `{mf_already_exists, {Registry, Name}, Message}' error if a counter
 %% with the same `Spec' already exists.
 %% @end
+-spec new(prometheus_metric_spec:spec()) -> ok.
 new(Spec) ->
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec).
 
@@ -132,10 +133,12 @@ new(Spec) ->
 %% Raises `{invalid_label_name, Name, Message}' error if `Name' isn't a valid
 %% label name.
 %% @end
+-spec declare(prometheus_metric_spec:spec()) -> boolean().
 declare(Spec) ->
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec).
 
 %% @equiv deregister(default, Name)
+-spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
@@ -148,16 +151,20 @@ deregister(Name) ->
 %% Returns `{true, _}' if `Name' was a registered counter.
 %% Otherwise returns `{true, _}'.
 %% @end
+-spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
+    {boolean(), boolean()}.
 deregister(Registry, Name) ->
     MFR = prometheus_metric:deregister_mf(?TABLE, Registry, Name),
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
 %% @private
+-spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
 set_default(Registry, Name) ->
     ets:insert_new(?TABLE, {key(Registry, Name, []), 0, 0}).
 
 %% @equiv inc(default, Name, [], 1)
+-spec inc(prometheus_metric:name()) -> ok.
 inc(Name) ->
     inc(default, Name, [], 1).
 
@@ -165,12 +172,14 @@ inc(Name) ->
 %% <a href="#inc-4"><tt>inc(default, Name, LabelValues, 1)</tt></a>
 %% otherwise equivalent to
 %% <a href="#inc-4"><tt>inc(default, Name, [], Value)</tt></a>.
+-spec inc(prometheus_metric:name(), list() | non_neg_integer()) -> ok.
 inc(Name, LabelValues) when is_list(LabelValues) ->
     inc(default, Name, LabelValues, 1);
 inc(Name, Value) ->
     inc(default, Name, [], Value).
 
 %% @equiv inc(default, Name, LabelValues, Value)
+-spec inc(prometheus_metric:name(), list(), non_neg_integer()) -> ok.
 inc(Name, LabelValues, Value) ->
     inc(default, Name, LabelValues, Value).
 
@@ -184,6 +193,12 @@ inc(Name, LabelValues, Value) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec inc(
+    prometheus_registry:registry(),
+    prometheus_metric:name(),
+    list(),
+    non_neg_integer()
+) -> ok.
 inc(Registry, Name, LabelValues, Value) when is_integer(Value), Value >= 0 ->
     try
         ets:update_counter(
@@ -213,10 +228,12 @@ inc(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "inc accepts only non-negative numbers"}).
 
 %% @equiv remove(default, Name, [])
+-spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
 %% @equiv remove(default, Name, LabelValues)
+-spec remove(prometheus_metric:name(), list()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -228,6 +245,7 @@ remove(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case
@@ -244,10 +262,12 @@ remove(Registry, Name, LabelValues) ->
     end.
 
 %% @equiv reset(default, Name, [])
+-spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
 %% @equiv reset(default, Name, LabelValues)
+-spec reset(prometheus_metric:name(), list()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -259,6 +279,7 @@ reset(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case
@@ -277,10 +298,12 @@ reset(Registry, Name, LabelValues) ->
     end.
 
 %% @equiv value(default, Name, [])
+-spec value(prometheus_metric:name()) -> number() | undefined.
 value(Name) ->
     value(default, Name, []).
 
 %% @equiv value(default, Name, LabelValues)
+-spec value(prometheus_metric:name(), list()) -> number() | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -293,6 +316,8 @@ value(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
+    number() | undefined.
 value(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case
@@ -304,6 +329,7 @@ value(Registry, Name, LabelValues) ->
         List -> lists:sum(List)
     end.
 
+-spec values(prometheus_registry:registry(), prometheus_metric:name()) -> [{list(), number()}].
 values(Registry, Name) ->
     case prometheus_metric:check_mf_exists(?TABLE, Registry, Name) of
         false ->
@@ -322,12 +348,14 @@ values(Registry, Name) ->
 %%====================================================================
 
 %% @private
+-spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     prometheus_metric:deregister_mf(?TABLE, Registry),
     true = ets:match_delete(?TABLE, {{Registry, '_', '_', '_'}, '_', '_'}),
     ok.
 
 %% @private
+-spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
         Callback(create_counter(Name, Help, {CLabels, Labels, Registry}))
@@ -339,6 +367,8 @@ collect_mf(Registry, Callback) ->
     ok.
 
 %% @private
+-spec collect_metrics(prometheus_metric:name(), prometheus_collector:collect_mf_callback()) ->
+    [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry}) ->
     MFValues = load_all_values(Registry, Name),
     LabelValues = reduce_label_values(MFValues),

@@ -90,6 +90,7 @@
 %% Raises `{mf_already_exists, {Registry, Name}, Message}' error if a boolean
 %% with the same `Spec' already exists.
 %% @end
+-spec new(prometheus_metric_spec:spec()) -> ok.
 new(Spec) ->
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec).
 
@@ -107,10 +108,12 @@ new(Spec) ->
 %% Raises `{invalid_label_name, Name, Message}' error if `Name' isn't a valid
 %% label name.<br/>
 %% @end
+-spec declare(prometheus_metric_spec:spec()) -> boolean().
 declare(Spec) ->
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec).
 
 %% @equiv deregister(default, Name)
+-spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
@@ -123,20 +126,25 @@ deregister(Name) ->
 %% Returns `{true, _}' if `Name' was a registered boolean.
 %% Otherwise returns `{true, _}'.
 %% @end
+-spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
+    {boolean(), boolean()}.
 deregister(Registry, Name) ->
     MFR = prometheus_metric:deregister_mf(?TABLE, Registry, Name),
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
 %% @private
+-spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> ok.
 set_default(Registry, Name) ->
     set(Registry, Name, [], undefined).
 
 %% @equiv set(default, Name, [], Value)
+-spec set(prometheus_metric:name(), prometheus_model_helpers:prometheus_boolean()) -> ok.
 set(Name, Value) ->
     set(default, Name, [], Value).
 
 %% @equiv set(default, Name, LabelValues, Value)
+-spec set(prometheus_metric:name(), list(), prometheus_model_helpers:prometheus_boolean()) -> ok.
 set(Name, LabelValues, Value) ->
     set(default, Name, LabelValues, Value).
 
@@ -161,15 +169,23 @@ set(Name, LabelValues, Value) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec set(
+    prometheus_registry:registry(),
+    prometheus_metric:name(),
+    list(),
+    prometheus_model_helpers:prometheus_boolean()
+) -> ok.
 set(Registry, Name, LabelValues, Value0) ->
     Value = prometheus_model_helpers:boolean_value(Value0),
     set_(Registry, Name, LabelValues, Value).
 
 %% @equiv toggle(default, Name, [])
+-spec toggle(prometheus_metric:name()) -> ok.
 toggle(Name) ->
     toggle(default, Name, []).
 
 %% @equiv toggle(default, Name, LabelValues, Value)
+-spec toggle(prometheus_metric:name(), list()) -> ok.
 toggle(Name, LabelValues) ->
     toggle(default, Name, LabelValues).
 
@@ -184,6 +200,7 @@ toggle(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec toggle(prometheus_registry:registry(), prometheus_metric:name(), list()) -> ok.
 toggle(Registry, Name, LabelValues) ->
     try
         ets:update_counter(
@@ -198,10 +215,12 @@ toggle(Registry, Name, LabelValues) ->
     ok.
 
 %% @equiv remove(default, Name, [])
+-spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
 %% @equiv remove(default, Name, LabelValues)
+-spec remove(prometheus_metric:name(), list()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -213,14 +232,17 @@ remove(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:remove_labels(?TABLE, Registry, Name, LabelValues).
 
 %% @equiv reset(default, Name, [])
+-spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
 %% @equiv reset(default, Name, LabelValues)
+-spec reset(prometheus_metric:name(), list()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -232,15 +254,18 @@ reset(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     ets:update_element(?TABLE, {Registry, Name, LabelValues}, {?BOOLEAN_POS, 0}).
 
 %% @equiv value(default, Name, [])
+-spec value(prometheus_metric:name()) -> boolean() | undefined.
 value(Name) ->
     value(default, Name, []).
 
 %% @equiv value(default, Name, LabelValues)
+-spec value(prometheus_metric:name(), list()) -> boolean() | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -253,6 +278,8 @@ value(Name, LabelValues) ->
 %% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
 %% mismatch.
 %% @end
+-spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
+    boolean() | undefined.
 value(Registry, Name, LabelValues) ->
     case ets:lookup(?TABLE, {Registry, Name, LabelValues}) of
         [{_Key, 0}] ->
@@ -266,6 +293,7 @@ value(Registry, Name, LabelValues) ->
             undefined
     end.
 
+-spec values(prometheus_registry:registry(), prometheus_metric:name()) -> [{list(), boolean()}].
 values(Registry, Name) ->
     case prometheus_metric:check_mf_exists(?TABLE, Registry, Name) of
         false ->
@@ -283,12 +311,14 @@ values(Registry, Name) ->
 %%====================================================================
 
 %% @private
+-spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     prometheus_metric:deregister_mf(?TABLE, Registry),
     true = ets:match_delete(?TABLE, {{Registry, '_', '_'}, '_'}),
     ok.
 
 %% @private
+-spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
         Callback(create_boolean(Name, Help, {CLabels, Labels, Registry}))
@@ -300,6 +330,8 @@ collect_mf(Registry, Callback) ->
     ok.
 
 %% @private
+-spec collect_metrics(prometheus_metric:name(), prometheus_collector:collect_mf_callback()) ->
+    [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry}) ->
     [
         prometheus_model_helpers:boolean_metric(

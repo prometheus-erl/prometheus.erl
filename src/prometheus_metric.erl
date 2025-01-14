@@ -168,7 +168,7 @@ check_mf_exists(Table, Registry, Name, LabelValues) ->
     end.
 
 %% @private
--spec check_mf_exists(Table, Registry, Name) -> boolean() | no_return() when
+-spec check_mf_exists(Table, Registry, Name) -> false | tuple() when
     Table :: atom(),
     Registry :: prometheus_registry:registry(),
     Name :: name().
