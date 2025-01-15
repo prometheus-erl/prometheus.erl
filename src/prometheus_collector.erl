@@ -150,7 +150,7 @@ enabled_collectors() ->
 global_labels_callback_wrapper(GlobalLabels0, Callback) ->
     GlobalLabels = prometheus_model_helpers:label_pairs(GlobalLabels0),
     GlobalLabelsPrerendered = prometheus_text_format:render_labels(GlobalLabels),
-    fun(MF = #'MetricFamily'{metric = Metrics0}) ->
+    fun(#'MetricFamily'{metric = Metrics0} = MF) ->
         Metrics =
             [
                 case ML of

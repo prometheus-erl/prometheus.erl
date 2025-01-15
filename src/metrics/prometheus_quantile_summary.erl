@@ -525,7 +525,7 @@ quantile(#{invariant := Invariant}) ->
 quantile(Configuration, Val) ->
     quantile_estimator:insert(Val, quantile(Configuration)).
 
-quantile_add(Q = #quantile_estimator{inserts_since_compression = ISS}, Val, CompressLimit) ->
+quantile_add(#quantile_estimator{inserts_since_compression = ISS} = Q, Val, CompressLimit) ->
     Q1 =
         case ISS > CompressLimit of
             true -> quantile_estimator:compress(Q);

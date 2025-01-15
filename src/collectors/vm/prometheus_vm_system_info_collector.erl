@@ -193,8 +193,6 @@
     collect_mf/2
 ]).
 
--import(prometheus_model_helpers, [create_mf/4]).
-
 -include("prometheus.hrl").
 
 -behaviour(prometheus_collector).
@@ -226,7 +224,9 @@ collect_mf(_Registry, Callback) ->
     ok.
 
 add_metric_family({Name, Type, Help}, Callback) ->
-    Callback(create_mf(?METRIC_NAME(Name), Help, Type, collect_metrics(Name))).
+    Callback(
+        prometheus_model_helpers:create_mf(?METRIC_NAME(Name), Help, Type, collect_metrics(Name))
+    ).
 
 %%====================================================================
 %% Private Parts
@@ -310,23 +310,24 @@ metric_enabled(Name, Metrics) ->
 
 collect_allocator_metrics() ->
     Metrics = lists:flatten([
-        begin
-            [
-                [
-                    allocator_metric(Alloc, Instance, Kind, Key, KindInfo)
-                 || Key <- [carriers, carriers_size]
-                ] ++
-                    [
-                        allocator_blocks_metric(Alloc, Instance, Kind, Key, KindInfo)
-                     || Key <- [count, size]
-                    ]
-             || {Kind, KindInfo} <- Info,
-                (Kind =:= mbcs) orelse (Kind =:= mbcs_pool) orelse (Kind =:= sbcs)
-            ]
-        end
+        collect_allocator_metrics_(Alloc, Instance, Info)
      || {{Alloc, Instance}, Info} <- allocators()
     ]),
     prometheus_model_helpers:gauge_metrics(Metrics).
+
+collect_allocator_metrics_(Alloc, Instance, Info) ->
+    [
+        [
+            allocator_metric(Alloc, Instance, Kind, Key, KindInfo)
+         || Key <- [carriers, carriers_size]
+        ] ++
+            [
+                allocator_blocks_metric(Alloc, Instance, Kind, Key, KindInfo)
+             || Key <- [count, size]
+            ]
+     || {Kind, KindInfo} <- Info,
+        (Kind =:= mbcs) orelse (Kind =:= mbcs_pool) orelse (Kind =:= sbcs)
+    ].
 
 allocator_metric(Alloc, Instance, Kind, Key, Values) ->
     {

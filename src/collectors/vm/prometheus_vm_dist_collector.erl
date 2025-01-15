@@ -244,8 +244,6 @@
     collect_mf/2
 ]).
 
--import(prometheus_model_helpers, [create_mf/4]).
-
 -include("prometheus.hrl").
 
 -behaviour(prometheus_collector).
@@ -279,7 +277,7 @@ collect_mf(_Registry, Callback) ->
     ok.
 
 add_metric_family({Name, Type, Help, Metrics}, Callback) ->
-    Callback(create_mf(?METRIC_NAME(Name), Help, Type, Metrics)).
+    Callback(prometheus_model_helpers:create_mf(?METRIC_NAME(Name), Help, Type, Metrics)).
 
 %%====================================================================
 %% Private Parts

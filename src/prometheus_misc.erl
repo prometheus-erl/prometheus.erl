@@ -59,12 +59,8 @@ all_module_attributes(Name) ->
     ).
 
 module_attributes(Module) ->
-    case catch Module:module_info(attributes) of
-        {'EXIT', {undef, [{Module, module_info, _} | _]}} ->
-            [];
-        {'EXIT', _Reason} ->
-            %% return empty list too
-            [];
-        V ->
-            V
+    try
+        Module:module_info(attributes)
+    catch
+        error:undef -> []
     end.
