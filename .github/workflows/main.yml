@@ -1,54 +1,44 @@
-name: CI
+name: main
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - "*"
+  workflow_dispatch: {}
 
 jobs:
   test:
-    name: CI
-    runs-on: ubuntu-latest
+    name: OTP ${{matrix.otp}}
     strategy:
       matrix:
-        otp: [21.3, 22.3, 23.0.4, 23.2.7.0, 24.0, 25.2]
-    container:
-      image: erlang:${{ matrix.otp }}-alpine
+        otp: ['27', '26', '25']
+        rebar3: ['3.24.0']
+    runs-on: 'ubuntu-24.04'
+    env:
+      OTPVER: ${{ matrix.otp }}
     steps:
-    - name: Prepare
-      run: |
-           apk update
-           apk --no-cache upgrade
-           apk --no-cache add gcc git libc-dev libc-utils libgcc linux-headers make bash curl tar
-    - uses: actions/checkout@v2
-    - name: Install elvis
-      run: |
-        mkdir -p _build/elvis-build
-        cd _build/elvis-build
-        curl -L -o elvis.tar.gz https://github.com/inaka/elvis/archive/refs/tags/1.1.0.tar.gz
-        tar -x --strip-components=1 -z -f elvis.tar.gz
-        rebar3 escriptize
-        cp -v _build/default/bin/elvis ..
-    - name: Build
-      run: rebar3 compile
-    - name: Run tests
-      run: |
-           ./_build/elvis rock --config elvis.config
-           rebar3 xref
-           rebar3 dialyzer
-           rebar3 eunit
-    - name: Coveralls
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        COVERALLS_FLAG_NAME: ${{ matrix.otp }}
-      run: DEBUG=1 rebar3 as test coveralls send
-
-  finish:
-    needs: test
-    runs-on: ubuntu-20.04
-    if: always()
-    steps:
-    - name: Coveralls Finished
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-           curl -v -k https://coveralls.io/webhook \
-                --header "Content-Type: application/json" \
-                --data "{\"repo_name\":\"$GITHUB_REPOSITORY\",\"repo_token\":\"$GITHUB_TOKEN\",\"payload\":{\"build_num\":$GITHUB_RUN_ID,\"status\":\"done\"}}"
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          rebar3-version: ${{matrix.rebar3}}
+      - run: rebar3 compile
+      - run: rebar3 fmt --check
+      - run: rebar3 lint
+      - run: rebar3 xref
+      - run: rebar3 eunit
+      - run: rebar3 dialyzer
+        if: ${{ matrix.otp == '27' }}
+      - run: rebar3 do cover, covertool generate
+        if: ${{ matrix.otp == '27' }}
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v5
+        if: ${{ matrix.otp == '27' }}
+        with:
+          files: _build/test/covertool/prometheus.covertool.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          verbose: true
