@@ -1,8 +1,8 @@
 {"1.2.0",
-[{<<"quantile_estimator">>,{pkg,<<"quantile_estimator">>,<<"0.2.1">>},0}]}.
+[{<<"quantile_estimator">>,{pkg,<<"quantile_estimator">>,<<"1.0.1">>},0}]}.
 [
 {pkg_hash,[
- {<<"quantile_estimator">>, <<"EF50A361F11B5F26B5F16D0696E46A9E4661756492C981F7B2229EF42FF1CD15">>}]},
+ {<<"quantile_estimator">>, <<"6CED14FBACCF5BC4C9F79EB28468A1D2BABD4B53EC978AD458CBD17B556C6C22">>}]},
 {pkg_hash_ext,[
- {<<"quantile_estimator">>, <<"282A8A323CA2A845C9E6F787D166348F776C1D4A41EDE63046D72D422E3DA946">>}]}
+ {<<"quantile_estimator">>, <<"401C4ADACE179F1A709CD269207324535B00888C87F980B0F794F79DEB3767D8">>}]}
 ].
