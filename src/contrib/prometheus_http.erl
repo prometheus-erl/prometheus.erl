@@ -16,7 +16,7 @@
 %%====================================================================
 
 -type status_code() :: pos_integer().
--type status_class() :: prometheus_model_helpers:label_value().
+-type status_class() :: prometheus:label_value().
 
 %%====================================================================
 %% Public API
