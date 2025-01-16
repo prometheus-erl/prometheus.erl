@@ -1,27 +1,15 @@
-%% @doc
-%% Serializes Prometheus registry using
-%% [protocol buffer format](http://bit.ly/2cxSuJP).
-%% @end
 -module(prometheus_protobuf_format).
--export([
-    content_type/0,
-    format/0,
-    format/1
-]).
+-compile({parse_transform, prometheus_pt}).
+-moduledoc """
+Serializes Prometheus registry using [protocol buffer format](http://bit.ly/2cxSuJP).
+""".
 
--include("prometheus.hrl").
--include("prometheus_model.hrl").
+-export([content_type/0, format/0, format/1]).
 
 -behaviour(prometheus_format).
 
-%%====================================================================
-%% Format API
-%%====================================================================
-
+-doc "Returns content type of the protocol buffer format.".
 -spec content_type() -> binary().
-%% @doc
-%% Returns content type of the protocol buffer format.
-%% @end
 content_type() ->
     <<
         "application/vnd.google.protobuf; "
@@ -29,18 +17,14 @@ content_type() ->
         "encoding=delimited"
     >>.
 
-%% @equiv format(default)
+-doc #{equiv => format(default)}.
+-doc "Formats `default` registry using protocol buffer format.".
 -spec format() -> binary().
-%% @doc
-%% Formats `default' registry using protocol buffer format.
-%% @end
 format() ->
     format(default).
 
+-doc "Formats `Registry` using protocol buffer format.".
 -spec format(Registry :: prometheus_registry:registry()) -> binary().
-%% @doc
-%% Formats `Registry' using protocol buffer format.
-%% @end
 format(Registry) ->
     {ok, Fd} = ram_file:open("", [write, read, binary]),
     Callback = fun(_, Collector) ->
@@ -51,10 +35,6 @@ format(Registry) ->
     {ok, Buf} = file:pread(Fd, 0, Size),
     ok = file:close(Fd),
     Buf.
-
-%%====================================================================
-%% Private Parts
-%%====================================================================
 
 registry_collect_callback(Fd, Registry, Collector) ->
     Callback = fun(MF) -> file:write(Fd, delimited_encode_mf(MF)) end,

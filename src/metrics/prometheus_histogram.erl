@@ -1,45 +1,43 @@
-%% @doc
-%% A Histogram tracks the size and number of events in buckets.
-%% You can use Histograms for aggregatable calculation of quantiles.
-%%
-%% Example use cases for Histograms:
-%% <ul>
-%%   <li>Response latency</li>
-%%   <li>Request size</li>
-%% </ul>
-%%
-%% Histogram expects `buckets' key in a metric spec. Buckets can be:
-%%   - a list of numbers in increasing order;
-%%   - :default;
-%%   - {:linear, start, step, count};
-%%   - {:exponential, start, step, count}
-%%
-%% Example:
-%% <pre lang="erlang">
-%% -module(example_instrumenter).
-%% setup() ->
-%%   prometheus_histogram:declare([{name, http_request_duration_milliseconds},
-%%                                 {labels, [method]},
-%%                                 {buckets, [100, 300, 500, 750, 1000]},
-%%                                 {help, "Http Request execution time."}]).
-%%
-%% instrument(Time, Method) ->
-%%   %% Time must be in native units, otherwise duration_unit must be false
-%%   prometheus_histogram:observe(http_request_duration_milliseconds,
-%%                                [Method], Time).
-%%
-%% </pre>
-%%
-%% The `prometheus_histogram:observe_n/3,4,5' adds limited support for the
-%% "weighted" histograms. It accepts the extra integer argument "Count" to
-%% update the number of observations in the bucket by adding that number.
-%% This allows for better accuracy in the case of irregular measurements,
-%% assuming that the "Count" conveys the observation time interval (for
-%% example, the number of time ticks when the recent value was observed).
-%%
-%% @end
-
 -module(prometheus_histogram).
+-compile({parse_transform, prometheus_pt}).
+-moduledoc """
+A Histogram tracks the size and number of events in buckets.
+You can use Histograms for aggregatable calculation of quantiles.
+
+Example use cases for Histograms:
+
+* Response latency
+* Request size
+
+Histogram expects `buckets` key in a metric spec. Buckets can be:
+
+* a list of numbers in increasing order;
+* `default`;
+* `{linear, Start, Step, Count`;
+* `{exponential, Start, Step, Count}`
+
+Example:
+
+```erlang
+-module(example_instrumenter).
+
+setup() ->
+    prometheus_histogram:declare([{name, http_request_duration_milliseconds},
+                                  {labels, [method]},
+                                  {buckets, [100, 300, 500, 750, 1000]},
+                                  {help, \"Http Request execution time.\"}]).
+
+instrument(Time, Method) ->
+    %% Time must be in native units, otherwise duration_unit must be false
+    prometheus_histogram:observe(http_request_duration_milliseconds, [Method], Time).
+```
+
+The `prometheus_histogram:observe_n/3,4,5` adds limited support for the \"weighted\" histograms.
+It accepts the extra integer argument \"Count\" to update the number of observations in the bucket
+by adding that number. This allows for better accuracy in the case of irregular measurements,
+assuming that the \"Count\" conveys the observation time interval (for example,
+the number of time ticks when the recent value was observed).
+""".
 
 %%% metric
 -export([
@@ -85,10 +83,6 @@
 -behaviour(prometheus_metric).
 -behaviour(prometheus_collector).
 
-%%====================================================================
-%% Macros
-%%====================================================================
-
 -define(TABLE, ?PROMETHEUS_HISTOGRAM_TABLE).
 -define(BOUNDS_POS, 2).
 -define(ISUM_POS, 3).
@@ -100,81 +94,69 @@
 %% {Key, NBounds, Sum, Bucket1, Bucket2, ...}
 %% NBounds is a list of bounds possibly converted to native units
 
-%%====================================================================
-%% Metric API
-%%====================================================================
+-doc """
+Creates a histogram using `Spec`.
 
-%% @doc Creates a histogram using `Spec'.
-%%
-%% Raises `{missing_metric_spec_key, Key, Spec}' error if required `Spec' key
-%% is missing.<br/>
-%% Raises `{invalid_metric_name, Name, Message}' error if metric `Name'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_help, Help, Message}' error if metric `Help'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_labels, Labels, Message}' error if `Labels'
-%% isn't a list.<br/>
-%% Raises `{invalid_label_name, Name, Message}' error if `Name' isn't a valid
-%% label name.<br/>
-%% Raises `{invalid_value_error, Value, Message}' error if `duration_unit' is
-%% unknown or doesn't match metric name.<br/>
-%% Raises `{mf_already_exists, {Registry, Name}, Message}' error if a histogram
-%% with the same `Spec' already exists.
-%%
-%% Histogram-specific errors:<br/>
-%% Raises `{no_buckets, Buckets}' error if `Buckets' are missing,
-%% not a list, empty list or not known buckets spec.<br/>
-%% Raises `{invalid_buckets, Buckets, Message}' error if `Buckets'
-%% aren't in increasing order.<br/>
-%% Raises `{invalid_bound, Bound}' error if `Bound' isn't a number.
-%% @end
--spec new(prometheus_metric_spec:spec()) -> ok.
+Raises:
+
+* `{missing_metric_spec_key, Key, Spec}` error if required `Spec` key is missing.
+* `{invalid_metric_name, Name, Message}` error if metric `Name` is invalid.
+* `{invalid_metric_help, Help, Message}` error if metric `Help` is invalid.
+* `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
+* `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
+* `{invalid_value_error, Value, Message}` error if `duration_unit` is unknown or doesn't match metric name.
+* `{mf_already_exists, {Registry, Name}, Message}` error if a histogram with the same `Spec` already exists.
+
+Histogram-specific errors:
+
+Raises:
+
+* `{no_buckets, Buckets}` error if `Buckets` are missing, not a list, empty list or not known buckets spec.
+* `{invalid_buckets, Buckets, Message}` error if `Buckets` aren't in increasing order.
+* `{invalid_bound, Bound}` error if `Bound` isn't a number.
+""".
+-spec new(prometheus_metric:spec()) -> ok.
 new(Spec) ->
     Spec1 = validate_histogram_spec(Spec),
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec1).
 
-%% @doc Creates a histogram using `Spec'.
-%% If a histogram with the same `Spec' exists returns `false'.
-%%
-%% Raises `{missing_metric_spec_key, Key, Spec}' error if required `Spec' key
-%% is missing.<br/>
-%% Raises `{invalid_metric_name, Name, Message}' error if metric `Name'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_help, Help, Message}' error if metric `Help'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_labels, Labels, Message}' error if `Labels'
-%% isn't a list.<br/>
-%% Raises `{invalid_label_name, Name, Message}' error if `Name' isn't a valid
-%% label name.<br/>
-%% Raises `{invalid_value_error, Value, MessagE}' error if `duration_unit' is
-%% unknown or doesn't match metric name.<br/>
-%%
-%% Histogram-specific errors:<br/>
-%% Raises `{no_buckets, Buckets}' error if `Buckets' are missing,
-%% not a list, empty list or not known buckets spec.<br/>
-%% Raises `{invalid_buckets, Buckets, Message}' error if `Buckets'
-%% aren't in increasing order.<br/>
-%% Raises `{invalid_bound, Bound}' error if `Bound' isn't a number.
-%% @end
--spec declare(prometheus_metric_spec:spec()) -> boolean().
+-doc """
+Creates a histogram using `Spec`. If a histogram with the same `Spec` exists returns `false`.
+
+Raises:
+
+* `{missing_metric_spec_key, Key, Spec}` error if required `Spec` key is missing.
+* `{invalid_metric_name, Name, Message}` error if metric `Name` is invalid.
+* `{invalid_metric_help, Help, Message}` error if metric `Help` is invalid.
+* `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
+* `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
+* `{invalid_value_error, Value, MessagE}` error if `duration_unit` is unknown or doesn't match metric name.
+
+Histogram-specific errors:
+
+Raises:
+
+* `{no_buckets, Buckets}` error if `Buckets` are missing, not a list, empty list or not known buckets spec.
+* `{invalid_buckets, Buckets, Message}` error if `Buckets` aren't in increasing order.
+* `{invalid_bound, Bound}` error if `Bound` isn't a number.
+""".
+-spec declare(prometheus_metric:spec()) -> boolean().
 declare(Spec) ->
     Spec1 = validate_histogram_spec(Spec),
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec1).
 
-%% @equiv deregister(default, Name)
+-doc #{equiv => deregister(default, Name)}.
 -spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
-%% @doc
-%% Removes all histogram series with name `Name' and
-%% removes Metric Family from `Registry'.
-%%
-%% After this call new/1 for `Name' and `Registry' will succeed.
-%%
-%% Returns `{true, _}' if `Name' was a registered histogram.
-%% Otherwise returns `{false, _}'.
-%% @end
+-doc """
+Removes all histogram series with name `Name` and removes Metric Family from `Registry`.
+
+After this call new/1 for `Name` and `Registry` will succeed.
+
+Returns `{true, _}` if `Name` was a registered histogram. Otherwise returns `{false, _}`.
+""".
 -spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
     {boolean(), boolean()}.
 deregister(Registry, Name) ->
@@ -189,54 +171,56 @@ deregister(Registry, Name) ->
         _:_ -> {false, false}
     end.
 
-%% @private
+-doc false.
 -spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
 set_default(Registry, Name) ->
     insert_placeholders(Registry, Name, []).
 
-%% @equiv observe(default, Name, [], Value)
+-doc #{equiv => observe(default, Name, [], Value)}.
 -spec observe(prometheus_metric:name(), number()) -> ok.
 observe(Name, Value) ->
     observe(default, Name, [], Value).
 
-%% @equiv observe(default, Name, LabelValues, Value)
+-doc #{equiv => observe(default, Name, LabelValues, Value)}.
 -spec observe(prometheus_metric:name(), list(), number()) -> ok.
 observe(Name, LabelValues, Value) ->
     observe(default, Name, LabelValues, Value).
 
-%% @doc Observes the given `Value'.
-%%
-%% Raises `{invalid_value, Value, Message}' if `Value' isn't a number.<br/>
-%% Raises `{unknown_metric, Registry, Name}' error if histogram with named
-%% `Name' can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Observes the given `Value`.
+
+Raises:
+
+* `{invalid_value, Value, Message}` if `Value` isn't a number.
+* `{unknown_metric, Registry, Name}` error if histogram with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec observe(prometheus_registry:registry(), prometheus_metric:name(), list(), number()) -> ok.
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     observe_n(Registry, Name, LabelValues, Value, 1);
 observe(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "observe accepts only numbers"}).
 
-%% @equiv observe_n(default, Name, [], Value, Count)
+-doc #{equiv => observe_n(default, Name, [], Value, Count)}.
 -spec observe_n(prometheus_metric:name(), number(), integer()) -> ok.
 observe_n(Name, Value, Count) ->
     observe_n(default, Name, [], Value, Count).
 
-%% @equiv observe_n(default, Name, LabelValues, Value, Count)
+-doc #{equiv => observe_n(default, Name, LabelValues, Value, Count)}.
 -spec observe_n(prometheus_metric:name(), list(), number(), integer()) -> ok.
 observe_n(Name, LabelValues, Value, Count) ->
     observe_n(default, Name, LabelValues, Value, Count).
 
-%% @doc Observes the given `Value' `Count' times.
-%%
-%% Raises `{invalid_value, Value, Message}' if `Value' isn't a number.<br/>
-%% Raises `{invalid_count, Count, Message}' if `Count' isn't integer.<br/>
-%% Raises `{unknown_metric, Registry, Name}' error if histogram with named
-%% `Name' can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Observes the given `Value`, `Count` times.
+
+Raises:
+
+* `{invalid_value, Value, Message}` if `Value` isn't a number.
+* `{invalid_count, Count, Message}` if `Count` isn't integer.
+* `{unknown_metric, Registry, Name}` error if histogram with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec observe_n(
     prometheus_registry:registry(),
     prometheus_metric:name(),
@@ -274,7 +258,7 @@ observe_n(_Registry, _Name, _LabelValues, Value, Count) when is_number(Value) ->
 observe_n(_Registry, _Name, _LabelValues, Value, _Count) ->
     erlang:error({invalid_value, Value, "observe_n accepts only number values"}).
 
-%% @private
+-doc false.
 -spec pobserve(
     prometheus_registry:registry(),
     prometheus_metric:name(),
@@ -330,25 +314,24 @@ pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) when is_number(
 pobserve(_Registry, _Name, _LabelValues, _Buckets, _Pos, Value) ->
     erlang:error({invalid_value, Value, "pobserve accepts only numbers"}).
 
-%% @equiv observe_duration(default, Name, [], Fun)
+-doc #{equiv => observe_duration(default, Name, [], Fun)}.
 -spec observe_duration(prometheus_metric:name(), fun(() -> term())) -> term().
 observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
-%% @equiv observe_duration(default, Name, LabelValues, Fun)
+-doc #{equiv => observe_duration(default, Name, LabelValues, Fun)}.
 -spec observe_duration(prometheus_metric:name(), list(), fun(() -> term())) -> term().
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
 
-%% @doc Tracks the amount of time spent executing `Fun'.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if histogram with named
-%% `Name' can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% Raises `{invalid_value, Value, Message}' if `Fun'
-%% isn't a function.<br/>
-%% @end
+-doc """
+Tracks the amount of time spent executing `Fun`.
+
+Raises:
+* `{unknown_metric, Registry, Name}` error if histogram with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+* `{invalid_value, Value, Message}` if `Fun` isn't a function.
+""".
 -spec observe_duration(
     prometheus_registry:registry(), prometheus_metric:name(), list(), fun(() -> term())
 ) ->
@@ -363,24 +346,24 @@ observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun, 0) ->
 observe_duration(_Regsitry, _Name, _LabelValues, Fun) ->
     erlang:error({invalid_value, Fun, "observe_duration accepts only functions"}).
 
-%% @equiv remove(default, Name, [])
+-doc #{equiv => remove(default, Name, [])}.
 -spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
-%% @equiv remove(default, Name, LabelValues)
+-doc #{equiv => remove(default, Name, LabelValues)}.
 -spec remove(prometheus_metric:name(), list()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
-%% @doc Removes histogram series identified by `Registry', `Name'
-%% and `LabelValues'.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if histogram with name
-%% `Name' can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Removes histogram series identified by `Registry`, `Name` and `LabelValues`.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if histogram with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
@@ -397,24 +380,24 @@ remove(Registry, Name, LabelValues) ->
         _ -> true
     end.
 
-%% @equiv reset(default, Name, [])
+-doc #{equiv => reset(default, Name, [])}.
 -spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
-%% @equiv reset(default, Name, LabelValues)
+-doc #{equiv => reset(default, Name, LabelValues)}.
 -spec reset(prometheus_metric:name(), list()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
-%% @doc Resets the value of the histogram identified by `Registry', `Name'
-%% and `LabelValues'.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if histogram with name
-%% `Name' can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Resets the value of the histogram identified by `Registry`, `Name` and `LabelValues`.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if histogram with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 reset(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
@@ -436,30 +419,30 @@ reset(Registry, Name, LabelValues) ->
         _ -> false
     end.
 
-%% @equiv value(default, Name, [])
+-doc #{equiv => value(default, Name, [])}.
 -spec value(prometheus_metric:name()) ->
     {number(), infinity | number()} | undefined.
 value(Name) ->
     value(default, Name, []).
 
-%% @equiv value(default, Name, LabelValues)
+-doc #{equiv => value(default, Name, LabelValues)}.
 -spec value(prometheus_metric:name(), list()) ->
     {number(), infinity | number()} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
-%% @doc Returns the value of the histogram identified by `Registry', `Name'
-%% and `LabelValues'. If there is no histogram for `LabelValues',
-%% returns `undefined'.
-%%
-%% If duration unit set, sum will be converted to the duration unit.
-%% {@link prometheus_time. Read more here.}
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if histogram named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Returns the value of the histogram identified by `Registry`, `Name` and `LabelValues`.
+If there is no histogram for `LabelValues`, returns `undefined`.
+
+If duration unit set, sum will be converted to the duration unit.
+[Read more here](`m:prometheus_time`).
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if histogram named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
     {number(), infinity | number()} | undefined.
 value(Registry, Name, LabelValues) ->
@@ -481,19 +464,17 @@ values(Registry, Name) ->
         MF -> mf_values(Registry, Name, MF)
     end.
 
-%% @equiv buckets(default, Name, [])
+-doc #{equiv => buckets(default, Name, [])}.
 -spec buckets(prometheus_metric:name()) -> [number()].
 buckets(Name) ->
     buckets(default, Name, []).
 
-%% @equiv buckets(default, Name, LabelValues)
+-doc #{equiv => buckets(default, Name, LabelValues)}.
 -spec buckets(prometheus_metric:name(), list()) -> [number()].
 buckets(Name, LabelValues) ->
     buckets(default, Name, LabelValues).
 
-%% @doc Returns buckets of the histogram identified by `Registry', `Name'
-%% and `LabelValues'.
-%% @end
+-doc "Returns buckets of the histogram identified by `Registry`, `Name` and `LabelValues`.".
 -spec buckets(
     prometheus_registry:registry(),
     prometheus_metric:name(),
@@ -507,7 +488,7 @@ buckets(Registry, Name, LabelValues) ->
 %% Collector API
 %%====================================================================
 
-%% @private
+-doc false.
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     [
@@ -517,7 +498,7 @@ deregister_cleanup(Registry) ->
     true = prometheus_metric:deregister_mf(?TABLE, Registry),
     ok.
 
-%% @private
+-doc false.
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
@@ -527,8 +508,8 @@ collect_mf(Registry, Callback) ->
     ],
     ok.
 
-%% @private
--spec collect_metrics(prometheus_metric:name(), prometheus_collector:collect_mf_callback()) ->
+-doc false.
+-spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry, DU, Bounds}) ->
     MFValues = load_all_values(Registry, Name, Bounds),

@@ -1,30 +1,30 @@
-%% @doc
-%% Summary metric, to track the size of events.
-%%
-%% Example use cases for Summaries:
-%%   - Response latency;
-%%   - Request size;
-%%   - Response size.
-%%
-%% Example:
-%% <pre lang="erlang">
-%% -module(my_proxy_instrumenter).
-%%
-%% setup() ->
-%%   prometheus_summary:declare([{name, request_size_bytes},
-%%                               {help, "Request size in bytes."}]),
-%%   prometheus_summary:declare([{name, response_size_bytes},
-%%                               {help, "Response size in bytes."}]).
-%%
-%% observe_request(Size) ->
-%%   prometheus_summary:observe(request_size_bytes, Size).
-%%
-%% observe_response(Size) ->
-%%   prometheus_summary:observe(response_size_bytes, Size).
-%% </pre>
-%% @end
-
 -module(prometheus_summary).
+-compile({parse_transform, prometheus_pt}).
+-moduledoc """
+Summary metric, to track the size of events.
+
+Example use cases for Summaries: - Response latency; - Request size; - Response size.
+
+Example:
+
+```text
+  -module(my_proxy_instrumenter).
+
+  setup() ->
+    prometheus_summary:declare([{name, request_size_bytes},
+                                {help, \"Request size in bytes.\"}]),
+    prometheus_summary:declare([{name, response_size_bytes},
+                                {help, \"Response size in bytes.\"}]).
+
+  observe_request(Size) ->
+    prometheus_summary:observe(request_size_bytes, Size).
+
+  observe_response(Size) ->
+    prometheus_summary:observe(response_size_bytes, Size).
+
+```
+{: lang=erlang }
+""".
 
 %%% metric
 -export([
@@ -77,63 +77,51 @@
 %% Metric API
 %%====================================================================
 
-%% @doc Creates a summary using `Spec'.
-%%
-%% Raises `{missing_metric_spec_key, Key, Spec}' error if required `Spec' key
-%% is missing.<br/>
-%% Raises `{invalid_metric_name, Name, Message}' error if metric `Name'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_help, Help, Message}' error if metric `Help'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_labels, Labels, Message}' error if `Labels'
-%% isn't a list.<br/>
-%% Raises `{invalid_label_name, Name, Message}' error if `Name' isn't a valid
-%% label name.<br/>
-%% Raises `{invalid_value_error, Value, Message}' error if `duration_unit' is
-%% unknown or doesn't match metric name.<br/>
-%% Raises `{mf_already_exists, {Registry, Name}, Message}' error if a summary
-%% with the same `Spec' already exists.
-%% @end
--spec new(prometheus_metric_spec:spec()) -> ok.
+-doc """
+Creates a summary using `Spec`.
+
+Raises:
+* `{missing_metric_spec_key, Key, Spec}` error if required `Spec` key is missing.
+* `{invalid_metric_name, Name, Message}` error if metric `Name` is invalid.
+* `{invalid_metric_help, Help, Message}` error if metric `Help` is invalid.
+* `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
+* `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
+* `{invalid_value_error, Value, Message}` error if `duration_unit` is unknown or doesn't match metric name.
+* `{mf_already_exists, {Registry, Name}, Message}` error if a summary with the same `Spec` already exists.
+""".
+-spec new(prometheus_metric:spec()) -> ok.
 new(Spec) ->
     validate_summary_spec(Spec),
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec).
 
-%% @doc Creates a summary using `Spec'.
-%% If a summary with the same `Spec' exists returns `false'.
-%%
-%% Raises `{missing_metric_spec_key, Key, Spec}' error if required `Spec' key
-%% is missing.<br/>
-%% Raises `{invalid_metric_name, Name, Message}' error if metric `Name'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_help, Help, Message}' error if metric `Help'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_labels, Labels, Message}' error if `Labels'
-%% isn't a list.<br/>
-%% Raises `{invalid_label_name, Name, Message}' error if `Name' isn't a valid
-%% label name.<br/>
-%% Raises `{invalid_value_error, Value, MessagE}' error if `duration_unit' is
-%% unknown or doesn't match metric name.<br/>
-%% @end
--spec declare(prometheus_metric_spec:spec()) -> boolean().
+-doc """
+Creates a summary using `Spec`. If a summary with the same `Spec` exists returns `false`.
+
+Raises:
+* `{missing_metric_spec_key, Key, Spec}` error if required `Spec` key is missing.
+* `{invalid_metric_name, Name, Message}` error if metric `Name` is invalid.
+* `{invalid_metric_help, Help, Message}` error if metric `Help` is invalid.
+* `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
+* `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
+* `{invalid_value_error, Value, MessagE}` error if `duration_unit` is unknown or doesn't match metric name.
+""".
+-spec declare(prometheus_metric:spec()) -> boolean().
 declare(Spec) ->
     Spec1 = validate_summary_spec(Spec),
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec1).
 
-%% @equiv deregister(default, Name)
+-doc #{equiv => deregister(default, Name)}.
 -spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
-%% @doc
-%% Removes all summary series with name `Name' and
-%% removes Metric Family from `Registry'.
-%%
-%% After this call new/1 for `Name' and `Registry' will succeed.
-%%
-%% Returns `{true, _}' if `Name' was a registered summary.
-%% Otherwise returns `{false, _}'.
-%% @end
+-doc """
+Removes all summary series with name `Name` and removes Metric Family from `Registry`.
+
+After this call new/1 for `Name` and `Registry` will succeed.
+
+Returns `{true, _}` if `Name` was a registered summary. Otherwise returns `{false, _}`.
+""".
 -spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
     {boolean(), boolean()}.
 deregister(Registry, Name) ->
@@ -141,30 +129,29 @@ deregister(Registry, Name) ->
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
-%% @private
+-doc false.
 -spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
 set_default(Registry, Name) ->
     ets:insert_new(?TABLE, {key(Registry, Name, []), 0, 0, 0}).
 
-%% @equiv observe(default, Name, [], Value)
+-doc #{equiv => observe(default, Name, [], Value)}.
 -spec observe(prometheus_metric:name(), number()) -> ok.
 observe(Name, Value) ->
     observe(default, Name, [], Value).
 
-%% @equiv observe(default, Name, LabelValues, Value)
+-doc #{equiv => observe(default, Name, LabelValues, Value)}.
 -spec observe(prometheus_metric:name(), list(), number()) -> ok.
 observe(Name, LabelValues, Value) ->
     observe(default, Name, LabelValues, Value).
 
-%% @doc Observes the given `Value'.
-%%
-%% Raises `{invalid_value, Value, Message}' if `Value'
-%% isn't an integer.<br/>
-%% Raises `{unknown_metric, Registry, Name}' error if summary with named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Observes the given `Value`.
+
+Raises:
+* `{invalid_value, Value, Message}` if `Value` isn't an integer.
+* `{unknown_metric, Registry, Name}` error if summary with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec observe(prometheus_registry:registry(), prometheus_metric:name(), list(), term()) -> ok.
 observe(Registry, Name, LabelValues, Value) when is_integer(Value) ->
     try
@@ -194,25 +181,24 @@ observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
 observe(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "observe accepts only numbers"}).
 
-%% @equiv observe_duration(default, Name, [], Fun)
+-doc #{equiv => observe_duration(default, Name, [], Fun)}.
 -spec observe_duration(prometheus_metric:name(), fun(() -> term())) -> term().
 observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
-%% @equiv observe_duration(default, Name, LabelValues, Fun)
+-doc #{equiv => observe_duration(default, Name, LabelValues, Fun)}.
 -spec observe_duration(prometheus_metric:name(), list(), fun(() -> term())) -> term().
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
 
-%% @doc Tracks the amount of time spent executing `Fun'.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if summary with named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% Raises `{invalid_value, Value, Message}' if `Fun'
-%% isn't a function.<br/>
-%% @end
+-doc """
+Tracks the amount of time spent executing `Fun`.
+
+Raises:
+* `{unknown_metric, Registry, Name}` error if summary with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+* `{invalid_value, Value, Message}` if `Fun` isn't a function.
+""".
 -spec observe_duration(
     prometheus_registry:registry(), prometheus_metric:name(), list(), fun(() -> term())
 ) ->
@@ -227,24 +213,23 @@ observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun) ->
 observe_duration(_Regsitry, _Name, _LabelValues, Fun) ->
     erlang:error({invalid_value, Fun, "observe_duration accepts only functions"}).
 
-%% @equiv remove(default, Name, [])
+-doc #{equiv => remove(default, Name, [])}.
 -spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
-%% @equiv remove(default, Name, LabelValues)
+-doc #{equiv => remove(default, Name, LabelValues)}.
 -spec remove(prometheus_metric:name(), list()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
-%% @doc Removes summary series identified by `Registry', `Name'
-%% and `LabelValues'.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if summary with name `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Removes summary series identified by `Registry`, `Name` and `LabelValues`.
+
+Raises:
+* `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
@@ -261,24 +246,23 @@ remove(Registry, Name, LabelValues) ->
         _ -> true
     end.
 
-%% @equiv reset(default, Name, [])
+-doc #{equiv => reset(default, Name, [])}.
 -spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
-%% @equiv reset(default, Name, LabelValues)
+-doc #{equiv => reset(default, Name, LabelValues)}.
 -spec reset(prometheus_metric:name(), list()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
-%% @doc Resets the value of the summary identified by `Registry', `Name'
-%% and `LabelValues'.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if summary with name `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Resets the value of the summary identified by `Registry`, `Name` and `LabelValues`.
+
+Raises:
+* `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
@@ -297,28 +281,27 @@ reset(Registry, Name, LabelValues) ->
         _ -> false
     end.
 
-%% @equiv value(default, Name, [])
+-doc #{equiv => value(default, Name, [])}.
 -spec value(prometheus_metric:name()) -> {integer(), number()} | undefined.
 value(Name) ->
     value(default, Name, []).
 
-%% @equiv value(default, Name, LabelValues)
+-doc #{equiv => value(default, Name, LabelValues)}.
 -spec value(prometheus_metric:name(), list()) -> {integer(), number()} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
-%% @doc Returns the value of the summary identified by `Registry', `Name'
-%% and `LabelValues'. If there is no summary for `LabelValues',
-%% returns `undefined'.
-%%
-%% If duration unit set, sum will be converted to the duration unit.
-%% {@link prometheus_time. Read more here.}
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if summary named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Returns the value of the summary identified by `Registry`, `Name` and `LabelValues`.
+If there is no summary for `LabelValues`, returns `undefined`.
+
+If duration unit set, sum will be converted to the duration unit.
+[Read more here.](`m:prometheus_time`)
+
+Raises:
+* `{unknown_metric, Registry, Name}` error if summary named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
     {integer(), number()} | undefined.
 value(Registry, Name, LabelValues) ->
@@ -373,14 +356,14 @@ values(Registry, Name) ->
 %% Collector API
 %%====================================================================
 
-%% @private
+-doc false.
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     prometheus_metric:deregister_mf(?TABLE, Registry),
     true = ets:match_delete(?TABLE, {{Registry, '_', '_', '_'}, '_', '_', '_'}),
     ok.
 
-%% @private
+-doc false.
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
@@ -392,8 +375,8 @@ collect_mf(Registry, Callback) ->
     ],
     ok.
 
-%% @private
--spec collect_metrics(prometheus_metric:name(), prometheus_collector:collect_mf_callback()) ->
+-doc false.
+-spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry, DU}) ->
     MFValues = load_all_values(Registry, Name),

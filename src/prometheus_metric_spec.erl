@@ -1,5 +1,6 @@
-%% @hidden
 -module(prometheus_metric_spec).
+-compile({parse_transform, prometheus_pt}).
+-moduledoc false.
 
 -export([
     get_value/2,
@@ -22,47 +23,35 @@
 ]).
 -endif.
 
--export_type([spec/0]).
-
-%%====================================================================
-%% Types
-%%====================================================================
-
--type spec() :: proplists:proplist().
-
-%%====================================================================
-%% Public API
-%%====================================================================
-
-%% @private
--spec registry(Spec :: spec()) -> any().
+-doc false.
+-spec registry(Spec :: prometheus_metric:spec()) -> any().
 registry(Spec) ->
     get_value(registry, Spec, default).
 
-%% @private
--spec name(Spec :: spec()) -> any().
+-doc false.
+-spec name(Spec :: prometheus_metric:spec()) -> any().
 name(Spec) ->
     Name = fetch_value(name, Spec),
     validate_metric_name(Name).
 
-%% @private
--spec labels(Spec :: spec()) -> list().
+-doc false.
+-spec labels(Spec :: prometheus_metric:spec()) -> list().
 labels(Spec) ->
     Labels = get_value(labels, Spec, []),
     validate_metric_label_names(Labels).
 
-%% @private
--spec help(Spec :: spec()) -> string().
+-doc false.
+-spec help(Spec :: prometheus_metric:spec()) -> string().
 help(Spec) ->
     Help = fetch_value(help, Spec),
     validate_metric_help(Help).
 
-%% @private
+-doc false.
 data(Spec) ->
     get_value(data, Spec).
 
-%% @private
--spec constant_labels(Spec :: spec()) -> list().
+-doc false.
+-spec constant_labels(Spec :: prometheus_metric:spec()) -> list().
 constant_labels(Spec) ->
     case get_value(constant_labels, Spec, #{}) of
         CL when is_map(CL) ->
@@ -72,8 +61,8 @@ constant_labels(Spec) ->
             erlang:error({invalid_value, CL, "constant labels is not a map"})
     end.
 
-%% @private
--spec duration_unit(Spec :: spec()) -> any().
+-doc false.
+-spec duration_unit(Spec :: prometheus_metric:spec()) -> any().
 duration_unit(Spec) ->
     Name = to_string(name(Spec)),
     NameDU = prometheus_time:duration_unit_from_string(Name),
@@ -95,8 +84,8 @@ duration_unit_from_spec(Spec) ->
     SDU = get_value(duration_unit, Spec, undefined),
     prometheus_time:validate_duration_unit(SDU).
 
-%% @private
--spec extract_common_params(Spec :: spec()) ->
+-doc false.
+-spec extract_common_params(Spec :: prometheus_metric:spec()) ->
     {any(), any(), list(), string(), list(), any(), any()}.
 extract_common_params(Spec) ->
     Registry = registry(Spec),
@@ -108,19 +97,19 @@ extract_common_params(Spec) ->
     DurationUnit = duration_unit(Spec),
     {Registry, Name, Labels, Help, CallTimeout, DurationUnit, Data}.
 
-%% @private
-%% @equiv get_value(Key, Spec, undefined)
--spec get_value(Key :: atom(), Spec :: spec()) -> any().
+-doc false.
+-doc #{equiv => get_value(Key, Spec, undefined)}.
+-spec get_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> any().
 get_value(Key, Spec) ->
     get_value(Key, Spec, undefined).
 
-%% @private
--spec get_value(Key :: atom(), Spec :: spec(), Default :: any()) -> any().
+-doc false.
+-spec get_value(Key :: atom(), Spec :: prometheus_metric:spec(), Default :: any()) -> any().
 get_value(Key, Spec, Default) ->
     proplists:get_value(Key, Spec, Default).
 
-%% @private
--spec fetch_value(Key :: atom(), Spec :: spec()) -> any() | no_return().
+-doc false.
+-spec fetch_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> any() | no_return().
 fetch_value(Key, Spec) ->
     case proplists:get_value(Key, Spec) of
         undefined ->
@@ -133,7 +122,6 @@ fetch_value(Key, Spec) ->
 %% Private Parts
 %%===================================================================
 
-%% @private
 -spec validate_metric_name
     (atom()) -> atom();
     (list()) -> list();
@@ -147,7 +135,6 @@ validate_metric_name(RawName) when is_list(RawName) ->
 validate_metric_name(RawName) ->
     erlang:error({invalid_metric_name, RawName, "metric name is not a string"}).
 
-%% @private
 -spec validate_metric_name
     (atom(), list()) -> atom();
     (list(), list()) -> list();
@@ -168,14 +155,12 @@ validate_metric_name(RawName, ListName) ->
             erlang:error({invalid_metric_name, RawName, "metric name is invalid string"})
     end.
 
-%% @private
 -spec validate_metric_label_names(list()) -> list().
 validate_metric_label_names(RawLabels) when is_list(RawLabels) ->
     lists:map(fun validate_metric_label_name/1, RawLabels);
 validate_metric_label_names(RawLabels) ->
     erlang:error({invalid_metric_labels, RawLabels, "not list"}).
 
-%% @private
 validate_metric_label_name(RawName) when is_atom(RawName) ->
     validate_metric_label_name(atom_to_list(RawName));
 validate_metric_label_name(RawName) when is_binary(RawName) ->
@@ -203,7 +188,6 @@ validate_metric_label_name_content(RawName) ->
             )
     end.
 
-%% @private
 -spec validate_metric_help(binary() | string()) -> binary() | string().
 validate_metric_help(RawHelp) when is_binary(RawHelp) ->
     validate_metric_help(binary_to_list(RawHelp));

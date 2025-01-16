@@ -1,14 +1,14 @@
-%% @doc
-%% A registry of Collectors.
-%%
-%% The majority of users should use the `default', rather than their own.
-%%
-%% Creating a registry other than the default is primarily useful for
-%% unit tests, or pushing a subset of metrics to the
-%% <a href="https://github.com/prometheus/pushgateway">Pushgateway</a> from
-%% batch jobs.
-%% @end
 -module(prometheus_registry).
+-compile({parse_transform, prometheus_pt}).
+-moduledoc """
+A registry of Collectors.
+
+The majority of users should use the `default`, rather than their own.
+
+Creating a registry other than the default is primarily useful for unit tests,
+or pushing a subset of metrics to the [Pushgateway](https://github.com/prometheus/pushgateway)
+from batch jobs.
+""".
 
 -export([
     collect/2,
@@ -33,32 +33,22 @@
 
 -include("prometheus.hrl").
 
-%%====================================================================
-%% Types
-%%====================================================================
-
 -type registry() :: atom().
 
 -type collect_callback() ::
     fun((registry(), prometheus_collector:collector()) -> any()).
 
-%%====================================================================
-%% Macros
-%%====================================================================
-
 -define(TABLE, ?PROMETHEUS_REGISTRY_TABLE).
 
-%%====================================================================
-%% Public API
-%%====================================================================
+-doc """
+Tries to find registry with the `Name`.
 
-%% @doc
-%% Tries to find registry with the `Name'.
-%% Assumes that registry name is always an atom.
-%% If `Name' is an atom `ets:lookup/2' is used
-%% If `Name' is an iolist performs safe search (to avoid interning
-%% atoms) and returns atom or false. This operation is O(n).
-%% @end
+Assumes that registry name is always an atom.
+- If `Name` is an atom `ets:lookup/2` is used
+- If `Name` is an iolist performs safe search (to avoid interning atoms) and returns atom or false.
+
+This operation is O(n).
+""".
 -spec exists(Name) -> Result when
     Name :: atom() | iolist(),
     Result :: boolean() | atom().
@@ -79,10 +69,7 @@ exists(Name) when is_list(Name) orelse is_binary(Name) ->
             false
     end.
 
-%% @doc
-%% Calls `Callback' for each collector with two arguments:
-%% `Registry' and `Collector'.
-%% @end
+-doc "Calls `Callback` for each collector with two arguments: `Registry` and `Collector`.".
 -spec collect(Registry, Callback) -> ok when
     Registry :: prometheus_registry:registry(),
     Callback :: collect_callback().
@@ -93,20 +80,18 @@ collect(Registry, Callback) ->
     ],
     ok.
 
-%% @doc
-%% Returns collectors registered in `Registry'.
-%% @end
+-doc "Returns collectors registered in `Registry`.".
 -spec collectors(Registry :: prometheus_registry:registry()) ->
     [Collector :: prometheus_collector:collector()].
 collectors(Registry) ->
     [Collector || {_, Collector} <- ets:lookup(?TABLE, Registry)].
 
-%% @equiv register_collector(default, Collector)
+-doc #{equiv => register_collector(default, Collector)}.
 -spec register_collector(Collector :: prometheus_collector:collector()) -> ok.
 register_collector(Collector) ->
     register_collector(default, Collector).
 
-%% @doc Register a collector.
+-doc "Register a collector.".
 -spec register_collector(
     Registry :: prometheus_registry:registry(),
     Collector :: prometheus_collector:collector()
@@ -117,11 +102,11 @@ register_collector(Registry, Collector) ->
 
 -spec register_collectors(Collectors :: [prometheus_collector:collector()]) ->
     ok.
-%% @equiv register_collectors(default, Collectors)
+-doc #{equiv => register_collectors(default, Collectors)}.
 register_collectors(Collectors) ->
     register_collectors(default, Collectors).
 
-%% @doc Registers collectors list.
+-doc "Registers collectors list.".
 -spec register_collectors(
     Registry :: prometheus_registry:registry(),
     Collectors :: [prometheus_collector:collector()]
@@ -131,12 +116,12 @@ register_collectors(Registry, Collectors) ->
     [register_collector(Registry, Collector) || Collector <- Collectors],
     ok.
 
-%% @equiv deregister_collector(default, Collector)
+-doc #{equiv => deregister_collector(default, Collector)}.
 -spec deregister_collector(Collector :: prometheus_collector:collector()) -> ok.
 deregister_collector(Collector) ->
     deregister_collector(default, Collector).
 
-%% @doc Unregisters a collector.
+-doc "Unregisters a collector.".
 -spec deregister_collector(
     Registry :: prometheus_registry:registry(),
     Collector :: prometheus_collector:collector()
@@ -146,12 +131,12 @@ deregister_collector(Registry, Collector) ->
     Collector:deregister_cleanup(Registry),
     ok.
 
-%% @equiv clear(default)
+-doc #{equiv => clear(default)}.
 -spec clear() -> ok.
 clear() ->
     clear(default).
 
-%% @doc Unregisters all collectors.
+-doc "Unregisters all collectors.".
 -spec clear(Registry :: prometheus_registry:registry()) -> ok.
 clear(Registry) ->
     [
@@ -160,13 +145,13 @@ clear(Registry) ->
     ],
     ok.
 
-%% @equiv collector_registeredp(default, Collector)
+-doc #{equiv => collector_registeredp(default, Collector)}.
 -spec collector_registeredp(Collector) -> boolean() when
     Collector :: prometheus_collector:collector().
 collector_registeredp(Collector) ->
     collector_registeredp(default, Collector).
 
-%% @doc Checks whether `Collector' is registered.
+-doc "Checks whether `Collector` is registered.".
 -spec collector_registeredp(Registry, Collector) -> boolean() when
     Registry :: prometheus_registry:registry(),
     Collector :: prometheus_collector:collector().
@@ -175,7 +160,3 @@ collector_registeredp(Registry, Collector) ->
         [] -> false;
         _ -> true
     end.
-
-%%%===================================================================
-%%% Private functions
-%%%===================================================================

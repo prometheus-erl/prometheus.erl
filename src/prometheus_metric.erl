@@ -1,5 +1,5 @@
-%% @hidden
 -module(prometheus_metric).
+-compile({parse_transform, prometheus_pt}).
 
 -export([
     insert_new_mf/3,
@@ -16,72 +16,43 @@
     remove_labels/4
 ]).
 
--export_type([
-    name/0,
-    help/0,
-    value/0,
-    duration_unit/0,
-    call_enabled/0
-]).
-
-%%====================================================================
-%% Types
-%%====================================================================
+-export_type([name/0, help/0, value/0, duration_unit/0, call_enabled/0, spec/0]).
 
 -type name() :: atom() | binary() | nonempty_string() | iolist().
 
 -type help() :: binary() | nonempty_string().
 
--type duration_unit() ::
-    microseconds
-    | milliseconds
-    | seconds
-    | minutes
-    | days.
-
+-type duration_unit() :: prometheus_time:duration_unit().
 -type call_enabled() :: boolean().
-
 -type counter_value() :: number().
-
 -type gauge_value() :: number().
-
 -type summary_value() :: {Count :: number(), Sum :: number()}.
-
 -type histogram_value() :: {Buckets :: [number(), ...], Sum :: number()}.
-
 -type value() ::
     counter_value()
     | gauge_value()
     | summary_value()
     | histogram_value()
     | undefined.
+-type spec() :: proplists:proplist().
 
-%%====================================================================
-%% Callbacks
-%%====================================================================
-
--callback new(Spec :: prometheus_metric_spec:spec()) -> ok.
-
--callback declare(Spec :: prometheus_metric_spec:spec()) -> boolean().
-
+-callback new(Spec :: spec()) -> ok.
+-callback declare(Spec :: spec()) -> boolean().
 -callback set_default(Registry, Name) -> any() when
     Registry :: prometheus_registry:registry(),
     Name :: name().
-
 -callback remove(Name :: name()) -> boolean() | no_return().
 -callback remove(Name :: name(), LValues :: list()) -> boolean() | no_return().
 -callback remove(Registry, Name, LValues) -> boolean() | no_return() when
     Registry :: prometheus_registry:registry(),
     Name :: name(),
     LValues :: list().
-
 -callback reset(Name :: name()) -> boolean() | no_return().
 -callback reset(Name :: name(), LValues :: list()) -> boolean() | no_return().
 -callback reset(Registry, Name, LValues) -> boolean() | no_return() when
     Registry :: prometheus_registry:registry(),
     Name :: name(),
     LValues :: list().
-
 -callback value(Name :: name()) -> value() | no_return().
 -callback value(Name :: name(), LValues :: list()) -> value() | no_return().
 -callback value(Registry, Name, LValues) -> value() | no_return() when
@@ -89,15 +60,11 @@
     Name :: name(),
     LValues :: list().
 
-%%====================================================================
-%% Public API
-%%====================================================================
-
-%% @private
+-doc false.
 -spec insert_new_mf(Table, Module, Spec) -> ok | no_return() when
     Table :: atom(),
     Module :: atom(),
-    Spec :: prometheus_metric_spec:spec().
+    Spec :: spec().
 insert_new_mf(Table, Module, Spec) ->
     case insert_mf(Table, Module, Spec) of
         true ->
@@ -108,11 +75,11 @@ insert_new_mf(Table, Module, Spec) ->
             erlang:error({mf_already_exists, {Registry, Name}, "Consider using declare instead."})
     end.
 
-%% @private
+-doc false.
 -spec insert_mf(Table, Module, Spec) -> boolean() when
     Table :: atom(),
     Module :: atom(),
-    Spec :: prometheus_metric_spec:spec().
+    Spec :: spec().
 insert_mf(Table, Module, Spec) ->
     {Registry, Name, Labels, Help, CLabels, DurationUnit, Data} =
         prometheus_metric_spec:extract_common_params(Spec),
@@ -127,14 +94,14 @@ insert_mf(Table, Module, Spec) ->
             false
     end.
 
-%% @private
+-doc false.
 -spec deregister_mf(Table, Registry) -> boolean() | no_return() when
     Table :: atom(),
     Registry :: prometheus_registry:registry().
 deregister_mf(Table, Registry) ->
     ets:match_delete(Table, {{Registry, mf, '_'}, '_', '_', '_', '_'}).
 
-%% @private
+-doc false.
 -spec deregister_mf(Table, Registry, Name) -> boolean() | no_return() when
     Table :: atom(),
     Registry :: prometheus_registry:registry(),
@@ -147,7 +114,7 @@ deregister_mf(Table, Registry, Name) ->
             true
     end.
 
-%% @private
+-doc false.
 -spec check_mf_exists(Table, Registry, Name, LabelValues) -> any() | no_return() when
     Table :: atom(),
     Registry :: prometheus_registry:registry(),
@@ -167,7 +134,7 @@ check_mf_exists(Table, Registry, Name, LabelValues) ->
             end
     end.
 
-%% @private
+-doc false.
 -spec check_mf_exists(Table, Registry, Name) -> false | tuple() when
     Table :: atom(),
     Registry :: prometheus_registry:registry(),
@@ -180,25 +147,28 @@ check_mf_exists(Table, Registry, Name) ->
             MF
     end.
 
+-doc false.
 -spec mf_labels(tuple()) -> any().
 mf_labels(MF) ->
     {Labels, _} = element(2, MF),
     Labels.
 
+-doc false.
 -spec mf_constant_labels(tuple()) -> any().
 mf_constant_labels(MF) ->
     element(3, MF).
 
+-doc false.
 -spec mf_duration_unit(tuple()) -> any().
 mf_duration_unit(MF) ->
     element(4, MF).
 
-%% @private
+-doc false.
 -spec mf_data(tuple()) -> any().
 mf_data(MF) ->
     element(5, MF).
 
-%% @private
+-doc false.
 -spec metrics(term(), term()) -> any().
 metrics(Table, Registry) ->
     ets:match(Table, {{Registry, mf, '$1'}, '$2', '$3', '$4', '$5'}).
@@ -217,6 +187,7 @@ maybe_set_default(Module, Registry, Name, []) ->
 maybe_set_default(_, _, _, _) ->
     ok.
 
+-doc false.
 -spec remove_labels(Table, Registry, Name, LValues) ->
     boolean() | no_return()
 when

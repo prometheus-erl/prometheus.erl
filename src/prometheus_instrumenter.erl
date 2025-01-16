@@ -1,29 +1,15 @@
-%% @hidden
 -module(prometheus_instrumenter).
+-compile({parse_transform, prometheus_pt}).
 
--export([
-    enabled_instrumenters/0,
-    setup/1
-]).
+-export([enabled_instrumenters/0, setup/1]).
 
 -export_type([instrumenter/0]).
 
-%%====================================================================
-%% Types
-%%====================================================================
-
 -type instrumenter() :: atom().
-
-%%====================================================================
-%% Callbacks
-%%====================================================================
 
 -callback setup_instrumenter() -> ok.
 
-%%====================================================================
-%% Public API
-%%====================================================================
-
+-doc false.
 -spec enabled_instrumenters() -> [instrumenter()].
 enabled_instrumenters() ->
     case application:get_env(prometheus, instrumenters) of
@@ -31,15 +17,12 @@ enabled_instrumenters() ->
         {ok, Instrumenters} -> Instrumenters
     end.
 
+-doc false.
 -spec setup(Instrumenter) -> Result when
     Instrumenter :: instrumenter(),
     Result :: ok.
 setup(Instrumenter) ->
     ok = Instrumenter:setup_instrumenter().
-
-%%====================================================================
-%% Private Parts
-%%====================================================================
 
 all_known_instrumenters() ->
     prometheus_misc:behaviour_modules(prometheus_instrumenter).

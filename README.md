@@ -57,30 +57,25 @@ For example, this branch is used by [RabbitMQ Exporter](https://github.com/deadt
 that should be compatible with all versions starting from R16B03.
 
 ### Build tools
-Rebar3 and rebar2 are supported.
+Rebar3 is supported.
 
 ## Example Console Session
 
 Run shell with compiled and loaded app:
 
 ```erlang-repl
-
     $ rebar3 shell
-
 ```
 
 Start prometheus app:
 
 ```erlang-repl
-
 prometheus:start().
-
 ```
 
 Register metrics:
 
 ```erlang
-
 prometheus_gauge:new([{name, pool_size}, {help, "MongoDB Connections pool size"}]),
 prometheus_counter:new([{name, http_requests_total}, {help, "Http request count"}]).
 prometheus_summary:new([{name, orders}, {help, "Track orders count/total sum"}]).
@@ -88,13 +83,11 @@ prometheus_histogram:new([{name, http_request_duration_milliseconds},
                                {labels, [method]},
                                {buckets, [100, 300, 500, 750, 1000]},
                                {help, "Http Request execution time"}]).
-
 ```
 
 Use metrics:
 
 ```erlang
-
 prometheus_gauge:set(pool_size, 365),
 prometheus_counter:inc(http_requests_total).
 prometheus_summary:observe(orders, 10).
@@ -114,20 +107,17 @@ prometheus_histogram:observe(http_request_duration_milliseconds, [post], 450).
 prometheus_histogram:observe(http_request_duration_milliseconds, [post], 850).
 prometheus_histogram:observe(http_request_duration_milliseconds, [post], 750).
 prometheus_histogram:observe(http_request_duration_milliseconds, [post], 1650).
-
 ```
 
 Export metrics as text:
 
 ```erlang
-
 io:format(prometheus_text_format:format()).
-
 ```
 
 ->
 
-```
+```text
 # TYPE http_requests_total counter
 # HELP http_requests_total Http request count
 http_requests_total 2
@@ -266,32 +256,3 @@ Pre-commit check can be skipped passing `--no-verify` option to git commit.
 ## License
 
 MIT
-
-
-## Modules ##
-
-
-<table width="100%" border="0" summary="list of modules">
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_boolean.md" class="module">prometheus_boolean</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_buckets.md" class="module">prometheus_buckets</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_collector.md" class="module">prometheus_collector</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_counter.md" class="module">prometheus_counter</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_format.md" class="module">prometheus_format</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_gauge.md" class="module">prometheus_gauge</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_histogram.md" class="module">prometheus_histogram</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_http.md" class="module">prometheus_http</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_mnesia.md" class="module">prometheus_mnesia</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_mnesia_collector.md" class="module">prometheus_mnesia_collector</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_model_helpers.md" class="module">prometheus_model_helpers</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_protobuf_format.md" class="module">prometheus_protobuf_format</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_quantile_summary.md" class="module">prometheus_quantile_summary</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_registry.md" class="module">prometheus_registry</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_summary.md" class="module">prometheus_summary</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_text_format.md" class="module">prometheus_text_format</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_time.md" class="module">prometheus_time</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_vm_dist_collector.md" class="module">prometheus_vm_dist_collector</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_vm_memory_collector.md" class="module">prometheus_vm_memory_collector</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_vm_msacc_collector.md" class="module">prometheus_vm_msacc_collector</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_vm_statistics_collector.md" class="module">prometheus_vm_statistics_collector</a></td></tr>
-<tr><td><a href="https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_vm_system_info_collector.md" class="module">prometheus_vm_system_info_collector</a></td></tr></table>
-

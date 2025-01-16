@@ -1,9 +1,10 @@
 -module(prometheus_buckets).
+-compile({parse_transform, prometheus_pt}).
 
--export([new/0, new/1, position/2]).
+-export([new/0, new/1, position/2, default/0]).
 
 -ifdef(TEST).
--export([default/0, exponential/3, linear/3]).
+-export([exponential/3, linear/3]).
 -endif.
 
 -type bucket_bound() :: number() | infinity.
@@ -17,11 +18,12 @@
 
 -export_type([bucket_bound/0, buckets/0]).
 
+-doc "Histogram buckets constructor, returns `default/0` plus `infinity`".
 -spec new() -> buckets().
 new() ->
     default() ++ [infinity].
 
-%% @doc Histogram buckets constructor
+-doc "Histogram buckets constructor".
 -spec new(config()) -> buckets().
 new([]) ->
     erlang:error({no_buckets, []});
@@ -54,32 +56,34 @@ validate_bound(infinity) ->
 validate_bound(Bound) ->
     erlang:error({invalid_bound, Bound}).
 
-%% @doc
-%% Default histogram buckets.
-%% <pre lang="erlang">
-%% 1> prometheus_buckets:default().
-%% [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
-%% </pre>
-%% Please note these buckets are floats and represent seconds so you'll
-%% have to use {@link prometheus_histogram:dobserve/3} or
-%% configure `duration_unit` as `seconds'.
-%% @end
+-doc """
+Default histogram buckets.
+
+```erlang
+1> prometheus_buckets:default().
+[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+
+```
+
+Please note these buckets are floats and represent seconds so you'll have to use
+`prometheus_histogramdobserve/3` or configure `duration_unit` as `seconds`.
+""".
 -spec default() -> buckets().
 default() -> [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10].
 
-%% @doc
-%% Creates `Count' buckets, where the lowest bucket has an
-%% upper bound of `Start' and each following bucket's upper bound is `Factor'
-%% times the previous bucket's upper bound. The returned list is meant to be
-%% used for the `buckets' key of histogram constructors options.
-%% <pre lang="erlang">
-%% 3> prometheus_buckets:exponential(100, 1.2, 3).
-%% [100, 120, 144]
-%% </pre>
-%% The function raises `{invalid_value, Value, Message}' error if `Count'
-%% isn't positive, if `Start' isn't positive, or if `Factor' is less than or
-%% equals to 1.
-%% @end
+-doc """
+Creates `Count` buckets, where the lowest bucket has an upper bound of `Start` and each following
+bucket's upper bound is `Factor` times the previous bucket's upper bound.
+The returned list is meant to be used for the `buckets` key of histogram constructors options.
+
+```erlang
+3> prometheus_buckets:exponential(100, 1.2, 3).
+[100, 120, 144]
+```
+
+The function raises `{invalid_value, Value, Message}` error if `Count` isn't positive,
+if `Start` isn't positive, or if `Factor` is less than or equals to 1.
+""".
 -spec exponential(number(), number(), pos_integer()) -> buckets().
 exponential(_Start, _Factor, Count) when Count < 1 ->
     erlang:error({invalid_value, Count, "Buckets count should be positive"});
@@ -93,17 +97,18 @@ exponential(Start, Factor, Count) ->
      || I <- lists:seq(0, Count - 1)
     ].
 
-%% @doc
-%% Creates `Count' buckets, each `Width' wide, where the lowest
-%% bucket has an upper bound of `Start'. The returned list is meant to be
-%% used for the `buckets' key of histogram constructors options.
-%% <pre lang="erlang">
-%% 2> prometheus_buckets:linear(10, 5, 6).
-%% [10, 15, 20, 25, 30, 35]
-%% </pre>
-%% The function raises `{invalid_value, Value, Message}' error if `Count'
-%% is zero or negative.
-%% @end
+-doc """
+Creates `Count` buckets, each `Width` wide, where the lowest bucket has an upper bound of `Start`.
+
+The returned list is meant to be used for the `buckets` key of histogram constructors options.
+
+```erlang
+2> prometheus_buckets:linear(10, 5, 6).
+[10, 15, 20, 25, 30, 35]
+```
+
+The function raises `{invalid_value, Value, Message}` error if `Count` is zero or negative.
+""".
 -spec linear(number(), number(), pos_integer()) -> buckets().
 linear(_Start, _Step, Count) when Count < 1 ->
     erlang:error({invalid_value, Count, "Buckets count should be positive"});
@@ -119,10 +124,6 @@ position(Buckets, Value) ->
         end,
         0
     ).
-
-%%====================================================================
-%% Private Parts
-%%====================================================================
 
 linear(_Current, _Step, 0, Acc) ->
     lists:reverse(Acc);

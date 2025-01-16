@@ -1,43 +1,41 @@
-%% @doc
-%% Gauge metric, to report instantaneous values.
-%%
-%% Gauge is a metric that represents a single numerical value that can
-%% arbitrarily go up and down.
-%%
-%% A Gauge is typically used for measured values like temperatures or current
-%% memory usage, but also "counts" that can go up and down, like the number of
-%% running processes.
-%%
-%% Example use cases for Gauges:
-%% <ul>
-%%   <li>Inprogress requests</li>
-%%   <li>Number of items in a queue</li>
-%%   <li>Free memory</li>
-%%   <li>Total memory</li>
-%%   <li>Temperature</li>
-%% </ul>
-%%
-%% Example:
-%% <pre lang="erlang">
-%% -module(my_pool_instrumenter).
-%%
-%% -export([setup/0,
-%%          set_size/1]).
-%%
-%% setup() ->
-%%   prometheus_gauge:declare([{name, my_pool_size},
-%%                             {help, "Pool size."}]),
-%%   prometheus_gauge:declare([{name, my_pool_checked_out},
-%%                             {help, "Number of checked out sockets"}]).
-%%
-%% set_size(Size) ->
-%%   prometheus_gauge:set(my_pool_size, Size)
-%%
-%% track_checked_out_sockets(CheckoutFun) ->
-%%   prometheus_gauge:track_inprogress(my_pool_checked_out, CheckoutFun)..
-%% </pre>
-%% @end
 -module(prometheus_gauge).
+-compile({parse_transform, prometheus_pt}).
+-moduledoc """
+Gauge metric, to report instantaneous values.
+
+Gauge is a metric that represents a single numerical value that can arbitrarily go up and down.
+
+A Gauge is typically used for measured values like temperatures or current memory usage,
+but also \"counts\" that can go up and down, like the number of running processes.
+
+Example use cases for Gauges:
+
+* Inprogress requests
+* Number of items in a queue
+* Free memory
+* Total memory
+* Temperature
+
+Example:
+
+```erlang
+-module(my_pool_instrumenter).
+
+ -export([setup/0, set_size/1]).
+
+ setup() ->
+    prometheus_gauge:declare([{name, my_pool_size},
+                              {help, \"Pool size.\"}]),
+    prometheus_gauge:declare([{name, my_pool_checked_out},
+                              {help, \"Number of checked out sockets\"}]).
+
+ set_size(Size) ->
+    prometheus_gauge:set(my_pool_size, Size)
+
+ track_checked_out_sockets(CheckoutFun) ->
+    prometheus_gauge:track_inprogress(my_pool_checked_out, CheckoutFun)..
+```
+""".
 
 %%% metric
 -export([
@@ -90,10 +88,6 @@
 -behaviour(prometheus_metric).
 -behaviour(prometheus_collector).
 
-%%====================================================================
-%% Macros
-%%====================================================================
-
 -define(TABLE, ?PROMETHEUS_GAUGE_TABLE).
 -define(IGAUGE_POS, 2).
 -define(FGAUGE_POS, 3).
@@ -102,61 +96,51 @@
 %% Metric API
 %%====================================================================
 
-%% @doc Creates a gauge using `Spec'.
-%%
-%% Raises `{missing_metric_spec_key, Key, Spec}' error if required `Spec' key
-%% is missing.<br/>
-%% Raises `{invalid_metric_name, Name, Message}' error if metric `Name'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_help, Help, Message}' error if metric `Help'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_labels, Labels, Message}' error if `Labels'
-%% isn't a list.<br/>
-%% Raises `{invalid_label_name, Name, Message}' error if `Name' isn't a valid
-%% label name.<br/>
-%% Raises `{invalid_value_error, Value, Message}' error if `duration_unit' is
-%% unknown or doesn't match metric name.<br/>
-%% Raises `{mf_already_exists, {Registry, Name}, Message}' error if a gauge
-%% with the same `Spec' already exists.
-%% @end
--spec new(prometheus_metric_spec:spec()) -> ok.
+-doc """
+Creates a gauge using `Spec`.
+
+Raises:
+
+* `{missing_metric_spec_key, Key, Spec}` error if required `Spec` key is missing.
+* `{invalid_metric_name, Name, Message}` error if metric `Name` is invalid.
+* `{invalid_metric_help, Help, Message}` error if metric `Help` is invalid.
+* `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
+* `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
+* `{invalid_value_error, Value, Message}` error if `duration_unit` is unknown or doesn't match metric name.
+* `{mf_already_exists, {Registry, Name}, Message}` error if a gauge with the same `Spec` already exists.
+""".
+-spec new(prometheus_metric:spec()) -> ok.
 new(Spec) ->
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec).
 
-%% @doc Creates a gauge using `Spec'.
-%% If a gauge with the same `Spec' exists returns `false'.
-%%
-%% Raises `{missing_metric_spec_key, Key, Spec}' error if required `Spec' key
-%% is missing.<br/>
-%% Raises `{invalid_metric_name, Name, Message}' error if metric `Name'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_help, Help, Message}' error if metric `Help'
-%% is invalid.<br/>
-%% Raises `{invalid_metric_labels, Labels, Message}' error if `Labels'
-%% isn't a list.<br/>
-%% Raises `{invalid_label_name, Name, Message}' error if `Name' isn't a valid
-%% label name.<br/>
-%% Raises `{invalid_value_error, Value, MessagE}' error if `duration_unit' is
-%% unknown or doesn't match metric name.<br/>
-%% @end
--spec declare(prometheus_metric_spec:spec()) -> boolean().
+-doc """
+Creates a gauge using `Spec`. If a gauge with the same `Spec` exists returns `false`.
+
+Raises:
+
+* `{missing_metric_spec_key, Key, Spec}` error if required `Spec` key is missing.
+* `{invalid_metric_name, Name, Message}` error if metric `Name` is invalid.
+* `{invalid_metric_help, Help, Message}` error if metric `Help` is invalid.
+* `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
+* `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
+* `{invalid_value_error, Value, MessagE}` error if `duration_unit` is unknown or doesn't match metric name.
+""".
+-spec declare(prometheus_metric:spec()) -> boolean().
 declare(Spec) ->
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec).
 
-%% @equiv deregister(default, Name)
+-doc #{equiv => deregister(default, Name)}.
 -spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
-%% @doc
-%% Removes all gauge series with name `Name' and
-%% removes Metric Family from `Registry'.
-%%
-%% After this call new/1 for `Name' and `Registry' will succeed.
-%%
-%% Returns `{true, _}' if `Name' was a registered gauge.
-%% Otherwise returns `{false, _}'.
-%% @end
+-doc """
+Removes all gauge series with name `Name` and removes Metric Family from `Registry`.
+
+After this call new/1 for `Name` and `Registry` will succeed.
+
+Returns `{true, _}` if `Name` was a registered gauge. Otherwise returns `{false, _}`.
+""".
 -spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
     {boolean(), boolean()}.
 deregister(Registry, Name) ->
@@ -164,31 +148,30 @@ deregister(Registry, Name) ->
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
-%% @private
+-doc false.
 -spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
 set_default(Registry, Name) ->
     ets:insert_new(?TABLE, {{Registry, Name, []}, 0, 0}).
 
-%% @equiv set(default, Name, [], Value)
+-doc #{equiv => set(default, Name, [], Value)}.
 -spec set(prometheus_metric:name(), number()) -> ok.
 set(Name, Value) ->
     set(default, Name, [], Value).
 
-%% @equiv set(default, Name, LabelValues, Value)
+-doc #{equiv => set(default, Name, LabelValues, Value)}.
 -spec set(prometheus_metric:name(), list(), number()) -> ok.
 set(Name, LabelValues, Value) ->
     set(default, Name, LabelValues, Value).
 
-%% @doc Sets the gauge identified by `Registry', `Name'
-%% and `LabelValues' to `Value'.
-%%
-%% Raises `{invalid_value, Value, Message}' if `Value'
-%% isn't a number or `undefined'.<br/>
-%% Raises `{unknown_metric, Registry, Name}' error if gauge with named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Sets the gauge identified by `Registry`, `Name` and `LabelValues` to `Value`.
+
+Raises:
+
+* `{invalid_value, Value, Message}` if `Value` isn't a number or `undefined`.
+* `{unknown_metric, Registry, Name}` error if gauge with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec set(prometheus_registry:registry(), prometheus_metric:name(), list(), number()) -> ok.
 set(Registry, Name, LabelValues, Value) ->
     Update =
@@ -214,36 +197,35 @@ set(Registry, Name, LabelValues, Value) ->
             ok
     end.
 
-%% @equiv inc(default, Name, [], 1)
+-doc #{equiv => inc(default, Name, [], 1)}.
 -spec inc(prometheus_metric:name()) -> ok.
 inc(Name) ->
     inc(default, Name, [], 1).
 
-%% @doc If the second argument is a list, equivalent to
-%% <a href="#inc-4"><tt>inc(default, Name, LabelValues, 1)</tt></a>
-%% otherwise equivalent to
-%% <a href="#inc-4"><tt>inc(default, Name, [], Value)</tt></a>.
+-doc """
+If the second argument is a list, equivalent to [inc(default, Name, LabelValues, 1)](`inc/4`)
+otherwise equivalent to [inc(default, Name, [], Value)](`inc/4`).
+""".
 -spec inc(prometheus_metric:name(), list() | non_neg_integer()) -> ok.
 inc(Name, LabelValues) when is_list(LabelValues) ->
     inc(default, Name, LabelValues, 1);
 inc(Name, Value) ->
     inc(default, Name, [], Value).
 
-%% @equiv inc(default, Name, LabelValues, Value)
+-doc #{equiv => inc(default, Name, LabelValues, Value)}.
 -spec inc(prometheus_metric:name(), list(), non_neg_integer()) -> ok.
 inc(Name, LabelValues, Value) ->
     inc(default, Name, LabelValues, Value).
 
-%% @doc Increments the gauge identified by `Registry', `Name'
-%% and `LabelValues' by `Value'.
-%%
-%% Raises `{invalid_value, Value, Message}' if `Value'
-%% isn't an integer.<br/>
-%% Raises `{unknown_metric, Registry, Name}' error if gauge with named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Increments the gauge identified by `Registry`, `Name` and `LabelValues` by `Value`.
+
+Raises:
+
+* `{invalid_value, Value, Message}` if `Value` isn't an integer.
+* `{unknown_metric, Registry, Name}` error if gauge with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec inc(
     prometheus_registry:registry(),
     prometheus_metric:name(),
@@ -278,79 +260,78 @@ inc(Registry, Name, LabelValues, Value) when is_number(Value) ->
 inc(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "inc accepts only numbers"}).
 
-%% @equiv inc(default, Name, [], -1)
+-doc #{equiv => inc(default, Name, [], -1)}.
 -spec dec(prometheus_metric:name()) -> ok.
 dec(Name) ->
     inc(default, Name, [], -1).
 
-%% @doc If the second argument is a list, equivalent to
-%% <a href="#inc-4"><tt>inc(default, Name, LabelValues, -1)</tt></a>
-%% otherwise equivalent to
-%% <a href="#inc-4"><tt>inc(default, Name, [], -1 * Value)</tt></a>.
+-doc """
+If the second argument is a list, equivalent to [inc(default, Name, LabelValues, -1)](`inc/4`)
+otherwise equivalent to [inc(default, Name, [], -Value)](`inc/4`).
+""".
 -spec dec(prometheus_metric:name(), list() | non_neg_integer()) -> ok.
 dec(Name, LabelValues) when is_list(LabelValues) ->
     inc(default, Name, LabelValues, -1);
 dec(Name, Value) when is_number(Value) ->
-    inc(default, Name, [], -1 * Value);
+    inc(default, Name, [], -Value);
 dec(_Name, Value) ->
     erlang:error({invalid_value, Value, "dec accepts only numbers"}).
 
-%% @equiv inc(default, Name, LabelValues, -1 * Value)
+-doc #{equiv => inc(default, Name, LabelValues, -Value)}.
 -spec dec(prometheus_metric:name(), list(), non_neg_integer()) -> ok.
 dec(Name, LabelValues, Value) when is_number(Value) ->
-    inc(default, Name, LabelValues, -1 * Value);
+    inc(default, Name, LabelValues, -Value);
 dec(_Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "dec accepts only numbers"}).
 
-%% @equiv inc(Registry, Name, LabelValues, -1 * Value)
+-doc #{equiv => inc(Registry, Name, LabelValues, -Value)}.
 -spec dec(prometheus_registry:registry(), prometheus_metric:name(), list(), number()) -> ok.
 dec(Registry, Name, LabelValues, Value) when is_number(Value) ->
-    inc(Registry, Name, LabelValues, -1 * Value);
+    inc(Registry, Name, LabelValues, -Value);
 dec(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "dec accepts only numbers"}).
 
-%% @equiv set_to_current_time(default, Name, [])
+-doc #{equiv => set_to_current_time(default, Name, [])}.
 -spec set_to_current_time(prometheus_metric:name()) -> ok.
 set_to_current_time(Name) ->
     set_to_current_time(default, Name, []).
 
-%% @equiv set_to_current_time(default, Name, LabelValues)
+-doc #{equiv => set_to_current_time(default, Name, LabelValues)}.
 -spec set_to_current_time(prometheus_metric:name(), list()) -> ok.
 set_to_current_time(Name, LabelValues) ->
     set_to_current_time(default, Name, LabelValues).
 
-%% @doc Sets the gauge identified by `Registry', `Name'
-%% and `LabelValues' to the current unixtime.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if gauge with named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Sets the gauge identified by `Registry`, `Name` and `LabelValues` to the current unixtime.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if gauge with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec set_to_current_time(prometheus_registry:registry(), prometheus_metric:name(), list()) -> ok.
 set_to_current_time(Registry, Name, LabelValues) ->
     set(Registry, Name, LabelValues, os:system_time(seconds)).
 
-%% @equiv track_inprogress(default, Name, [], Fun)
+-doc #{equiv => track_inprogress(default, Name, [], Fun)}.
 -spec track_inprogress(prometheus_metric:name(), fun(() -> any())) -> any().
 track_inprogress(Name, Fun) ->
     track_inprogress(default, Name, [], Fun).
 
-%% @equiv track_inprogress(default, Name, LabelValues, Fun)
+-doc #{equiv => track_inprogress(default, Name, LabelValues, Fun)}.
 -spec track_inprogress(prometheus_metric:name(), list(), fun(() -> any())) -> any().
 track_inprogress(Name, LabelValues, Fun) ->
     track_inprogress(default, Name, LabelValues, Fun).
 
-%% @doc Sets the gauge identified by `Registry', `Name'
-%% and `LabelValues' to the number of currently executing `Fun's.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if gauge with named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% Raises `{invalid_value, Value, Message}' if `Fun'
-%% isn't a function.<br/>
-%% @end
+-doc """
+Sets the gauge identified by `Registry`, `Name` and `LabelValues` to the number of currently executing `Fun`s.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if gauge with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+* `{invalid_value, Value, Message}` if `Fun` isn't a function.
+""".
 -spec track_inprogress(
     prometheus_registry:registry(),
     prometheus_metric:name(),
@@ -367,26 +348,25 @@ track_inprogress(Registry, Name, LabelValues, Fun) when is_function(Fun, 0) ->
 track_inprogress(_Registry, _Name, _LabelValues, Fun) ->
     erlang:error({invalid_value, Fun, "track_inprogress accepts only functions"}).
 
-%% @equiv set_duration(default, Name, [], Fun)
+-doc #{equiv => set_duration(default, Name, [], Fun)}.
 -spec set_duration(prometheus_metric:name(), fun(() -> any())) -> any().
 set_duration(Name, Fun) ->
     set_duration(default, Name, [], Fun).
 
-%% @equiv set_duration(default, Name, LabelValues, Fun)
+-doc #{equiv => set_duration(default, Name, LabelValues, Fun)}.
 -spec set_duration(prometheus_metric:name(), list(), fun(() -> any())) -> any().
 set_duration(Name, LabelValues, Fun) ->
     set_duration(default, Name, LabelValues, Fun).
 
-%% @doc Sets the gauge identified by `Registry', `Name'
-%% and `LabelValues' to the the amount of time spent executing `Fun'.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if gauge with named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% Raises `{invalid_value, Value, Message}' if `Fun'
-%% isn't a function.<br/>
-%% @end
+-doc """
+Sets the gauge identified by `Registry`, `Name` and `LabelValues` to the the amount of time spent executing `Fun`.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if gauge with named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+* `{invalid_value, Value, Message}` if `Fun` isn't a function.
+""".
 -spec set_duration(
     prometheus_registry:registry(),
     prometheus_metric:name(),
@@ -403,73 +383,73 @@ set_duration(Registry, Name, LabelValues, Fun) when is_function(Fun, 0) ->
 set_duration(_Registry, _Name, _LabelValues, Fun) ->
     erlang:error({invalid_value, Fun, "set_duration accepts only functions"}).
 
-%% @equiv remove(default, Name, [])
+-doc #{equiv => remove(default, Name, [])}.
 -spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
-%% @equiv remove(default, Name, LabelValues)
+-doc #{equiv => remove(default, Name, LabelValues)}.
 -spec remove(prometheus_metric:name(), list()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
-%% @doc Removes gauge series identified by `Registry', `Name'
-%% and `LabelValues'.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if gauge with name `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Removes gauge series identified by `Registry`, `Name` and `LabelValues`.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if gauge with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:remove_labels(?TABLE, Registry, Name, LabelValues).
 
-%% @equiv reset(default, Name, [])
+-doc #{equiv => reset(default, Name, [])}.
 -spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
-%% @equiv reset(default, Name, LabelValues)
+-doc #{equiv => reset(default, Name, LabelValues)}.
 -spec reset(prometheus_metric:name(), list()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
-%% @doc Resets the value of the gauge identified by `Registry', `Name'
-%% and `LabelValues'.
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if gauge with name `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Resets the value of the gauge identified by `Registry`, `Name` and `LabelValues`.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if gauge with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     ets:update_element(?TABLE, {Registry, Name, LabelValues}, [{?IGAUGE_POS, 0}, {?FGAUGE_POS, 0}]).
 
-%% @equiv value(default, Name, [])
+-doc #{equiv => value(default, Name, [])}.
 -spec value(prometheus_metric:name()) -> number() | undefined.
 value(Name) ->
     value(default, Name, []).
 
-%% @equiv value(default, Name, LabelValues)
+-doc #{equiv => value(default, Name, LabelValues)}.
 -spec value(prometheus_metric:name(), list()) -> number() | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
-%% @doc Returns the value of the gauge identified by `Registry', `Name'
-%% and `LabelValues'. If there is no gauge for `LabelValues',
-%% returns `undefined'.
-%%
-%% If duration unit set, value will be converted to the duration unit.
-%% {@link prometheus_time. Read more here.}
-%%
-%% Raises `{unknown_metric, Registry, Name}' error if gauge named `Name'
-%% can't be found in `Registry'.<br/>
-%% Raises `{invalid_metric_arity, Present, Expected}' error if labels count
-%% mismatch.
-%% @end
+-doc """
+Returns the value of the gauge identified by `Registry`, `Name` and `LabelValues`.
+If there is no gauge for `LabelValues`, returns `undefined`.
+
+If duration unit set, value will be converted to the duration unit.
+[Read more here.](`m:prometheus_time`)
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if gauge named `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""".
 -spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
     number() | undefined.
 value(Registry, Name, LabelValues) ->
@@ -502,14 +482,14 @@ values(Registry, Name) ->
 %% Collector API
 %%====================================================================
 
-%% @private
+-doc false.
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     prometheus_metric:deregister_mf(?TABLE, Registry),
     true = ets:match_delete(?TABLE, {{Registry, '_', '_'}, '_', '_'}),
     ok.
 
-%% @private
+-doc false.
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
@@ -521,8 +501,8 @@ collect_mf(Registry, Callback) ->
     ],
     ok.
 
-%% @private
--spec collect_metrics(prometheus_metric:name(), prometheus_collector:collect_mf_callback()) ->
+-doc false.
+-spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry, DU}) ->
     [

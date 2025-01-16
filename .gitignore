@@ -20,3 +20,4 @@ logs
 _build
 /tmp
 rebar3
+doc/
