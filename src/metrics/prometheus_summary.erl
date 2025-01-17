@@ -7,23 +7,22 @@ Example use cases for Summaries: - Response latency; - Request size; - Response 
 
 Example:
 
-```text
-  -module(my_proxy_instrumenter).
+```erlang
+-module(my_proxy_instrumenter).
 
-  setup() ->
+setup() ->
     prometheus_summary:declare([{name, request_size_bytes},
                                 {help, \"Request size in bytes.\"}]),
     prometheus_summary:declare([{name, response_size_bytes},
                                 {help, \"Response size in bytes.\"}]).
 
-  observe_request(Size) ->
+observe_request(Size) ->
     prometheus_summary:observe(request_size_bytes, Size).
 
-  observe_response(Size) ->
+observe_response(Size) ->
     prometheus_summary:observe(response_size_bytes, Size).
 
 ```
-{: lang=erlang }
 """.
 
 %%% metric
@@ -63,19 +62,20 @@ Example:
 -behaviour(prometheus_metric).
 -behaviour(prometheus_collector).
 
-%%====================================================================
-%% Macros
-%%====================================================================
-
 -define(TABLE, ?PROMETHEUS_SUMMARY_TABLE).
 -define(ISUM_POS, 3).
 -define(FSUM_POS, 4).
 -define(COUNTER_POS, 2).
 -define(WIDTH, 16).
 
-%%====================================================================
-%% Metric API
-%%====================================================================
+-type conflict_cb() :: fun(
+    (
+        prometheus_registry:registry(),
+        prometheus_metric:name(),
+        prometheus_metric:labels(),
+        number()
+    ) -> ok
+).
 
 -doc """
 Creates a summary using `Spec`.
@@ -140,7 +140,7 @@ observe(Name, Value) ->
     observe(default, Name, [], Value).
 
 -doc #{equiv => observe(default, Name, LabelValues, Value)}.
--spec observe(prometheus_metric:name(), list(), number()) -> ok.
+-spec observe(prometheus_metric:name(), prometheus_metric:labels(), number()) -> ok.
 observe(Name, LabelValues, Value) ->
     observe(default, Name, LabelValues, Value).
 
@@ -152,14 +152,16 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec observe(prometheus_registry:registry(), prometheus_metric:name(), list(), term()) -> ok.
+-spec observe(Registry, Name, LabelValues, Value) -> ok when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:labels(),
+    Value :: number().
 observe(Registry, Name, LabelValues, Value) when is_integer(Value) ->
+    Key = key(Registry, Name, LabelValues),
+    Spec = [{?COUNTER_POS, 1}, {?ISUM_POS, Value}],
     try
-        ets:update_counter(
-            ?TABLE,
-            key(Registry, Name, LabelValues),
-            [{?COUNTER_POS, 1}, {?ISUM_POS, Value}]
-        )
+        ets:update_counter(?TABLE, Key, Spec)
     catch
         error:badarg ->
             insert_metric(Registry, Name, LabelValues, Value, fun observe/4)
@@ -167,12 +169,8 @@ observe(Registry, Name, LabelValues, Value) when is_integer(Value) ->
     ok;
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     Key = key(Registry, Name, LabelValues),
-    case
-        ets:select_replace(
-            ?TABLE,
-            [{{Key, '$1', '$2', '$3'}, [], [{{{Key}, {'+', '$1', 1}, '$2', {'+', '$3', Value}}}]}]
-        )
-    of
+    Spec = [{{Key, '$1', '$2', '$3'}, [], [{{{Key}, {'+', '$1', 1}, '$2', {'+', '$3', Value}}}]}],
+    case ets:select_replace(?TABLE, Spec) of
         0 ->
             insert_metric(Registry, Name, LabelValues, Value, fun observe/4);
         1 ->
@@ -187,7 +185,8 @@ observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
 -doc #{equiv => observe_duration(default, Name, LabelValues, Fun)}.
--spec observe_duration(prometheus_metric:name(), list(), fun(() -> term())) -> term().
+-spec observe_duration(prometheus_metric:name(), prometheus_metric:labels(), fun(() -> term())) ->
+    term().
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
 
@@ -199,10 +198,11 @@ Raises:
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 * `{invalid_value, Value, Message}` if `Fun` isn't a function.
 """.
--spec observe_duration(
-    prometheus_registry:registry(), prometheus_metric:name(), list(), fun(() -> term())
-) ->
-    term().
+-spec observe_duration(Registry, Name, LabelValues, Fun) -> any() when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:labels(),
+    Fun :: fun(() -> any()).
 observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun) ->
     Start = erlang:monotonic_time(),
     try
@@ -219,7 +219,7 @@ remove(Name) ->
     remove(default, Name, []).
 
 -doc #{equiv => remove(default, Name, LabelValues)}.
--spec remove(prometheus_metric:name(), list()) -> boolean().
+-spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -230,7 +230,8 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
+-spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
+    boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case
@@ -252,7 +253,7 @@ reset(Name) ->
     reset(default, Name, []).
 
 -doc #{equiv => reset(default, Name, LabelValues)}.
--spec reset(prometheus_metric:name(), list()) -> boolean().
+-spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -263,7 +264,8 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
+-spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
+    boolean().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case
@@ -287,7 +289,8 @@ value(Name) ->
     value(default, Name, []).
 
 -doc #{equiv => value(default, Name, LabelValues)}.
--spec value(prometheus_metric:name(), list()) -> {integer(), number()} | undefined.
+-spec value(prometheus_metric:name(), prometheus_metric:labels()) ->
+    {integer(), number()} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -302,7 +305,7 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
+-spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     {integer(), number()} | undefined.
 value(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
@@ -327,29 +330,23 @@ values(Registry, Name) ->
             DU = prometheus_metric:mf_duration_unit(MF),
             Labels = prometheus_metric:mf_labels(MF),
             MFValues = load_all_values(Registry, Name),
-            ReducedMap = lists:foldl(
-                fun([L, C, IS, FS], ResAcc) ->
-                    {PrevCount, PrevSum} = maps:get(L, ResAcc, {0, 0}),
-                    ResAcc#{L => {PrevCount + C, PrevSum + IS + FS}}
-                end,
-                #{},
-                MFValues
-            ),
+            Foldl = fun([L, C, IS, FS], ResAcc) ->
+                {PrevCount, PrevSum} = maps:get(L, ResAcc, {0, 0}),
+                ResAcc#{L => {PrevCount + C, PrevSum + IS + FS}}
+            end,
+            ReducedMap = lists:foldl(Foldl, #{}, MFValues),
             ReducedMapList = lists:sort(maps:to_list(ReducedMap)),
-            lists:foldr(
-                fun({LabelValues, {Count, Sum}}, Acc) ->
-                    [
-                        {
-                            lists:zip(Labels, LabelValues),
-                            Count,
-                            prometheus_time:maybe_convert_to_du(DU, Sum)
-                        }
-                        | Acc
-                    ]
-                end,
-                [],
-                ReducedMapList
-            )
+            Foldr = fun({LabelValues, {Count, Sum}}, Acc) ->
+                [
+                    {
+                        lists:zip(Labels, LabelValues),
+                        Count,
+                        prometheus_time:maybe_convert_to_du(DU, Sum)
+                    }
+                    | Acc
+                ]
+            end,
+            lists:foldr(Foldr, [], ReducedMapList)
     end.
 
 %%====================================================================
@@ -368,10 +365,7 @@ deregister_cleanup(Registry) ->
 collect_mf(Registry, Callback) ->
     [
         Callback(create_summary(Name, Help, {CLabels, Labels, Registry, DU}))
-     || [Name, {Labels, Help}, CLabels, DU, _] <- prometheus_metric:metrics(
-            ?TABLE,
-            Registry
-        )
+     || [Name, {Labels, Help}, CLabels, DU, _] <- prometheus_metric:metrics(?TABLE, Registry)
     ],
     ok.
 
@@ -426,14 +420,12 @@ raise_error_if_quantile_label_found("quantile") ->
 raise_error_if_quantile_label_found(Label) ->
     Label.
 
--spec insert_metric(
-    prometheus_registry:registry(),
-    prometheus_metric:name(),
-    list(),
-    number(),
-    fun((prometheus_registry:registry(), prometheus_metric:name(), list(), number()) -> ok)
-) ->
-    ok.
+-spec insert_metric(Registry, Name, LabelValues, Value, ConflictCB) -> ok when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:labels(),
+    Value :: number(),
+    ConflictCB :: conflict_cb().
 insert_metric(Registry, Name, LabelValues, Value, ConflictCB) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case ets:insert_new(?TABLE, {key(Registry, Name, LabelValues), 1, 0, Value}) of

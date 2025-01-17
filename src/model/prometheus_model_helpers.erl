@@ -116,7 +116,7 @@ create_mf(Name, Help, Type, Collector, CollectorData) ->
 
 -doc #{equiv => lists:map(fun gauge_metrics/1, Values)}.
 -spec gauge_metrics(Values) -> [prometheus_model:'Metric'()] when
-    Values :: [gauge()].
+    Values :: [prometheus:gauge()].
 gauge_metrics(Values) ->
     lists:map(fun gauge_metric/1, Values).
 
@@ -139,7 +139,7 @@ gauge_metric(Labels, Value) ->
 
 -doc #{equiv => lists:map(fun untyped_metric/1, Values)}.
 -spec untyped_metrics(Values) -> [prometheus_model:'Metric'()] when
-    Values :: [untyped()].
+    Values :: [prometheus:untyped()].
 untyped_metrics(Values) ->
     lists:map(fun untyped_metric/1, Values).
 
@@ -162,7 +162,7 @@ untyped_metric(Labels, Value) ->
 
 -doc #{equiv => lists:map(fun boolean_metric/1, Values)}.
 -spec boolean_metrics(Values) -> [prometheus_model:'Metric'()] when
-    Values :: [pbool()].
+    Values :: [prometheus:pbool()].
 boolean_metrics(Values) ->
     lists:map(fun boolean_metric/1, Values).
 
@@ -200,7 +200,7 @@ boolean_value(Value) ->
 
 -doc #{equiv => lists:map(fun counter_metric/1, Values)}.
 -spec counter_metrics(Specs) -> [prometheus_model:'Metric'()] when
-    Specs :: [counter()].
+    Specs :: [prometheus:counter()].
 counter_metrics(Specs) ->
     lists:map(fun counter_metric/1, Specs).
 
@@ -223,7 +223,7 @@ counter_metric(Labels, Value) ->
 
 -doc #{equiv => lists:map(fun summary_metric/1, Specs)}.
 -spec summary_metrics(Specs) -> [prometheus_model:'Metric'()] when
-    Specs :: [summary()].
+    Specs :: [prometheus:summary()].
 summary_metrics(Specs) ->
     lists:map(fun summary_metric/1, Specs).
 
@@ -242,7 +242,7 @@ summary_metric({Count, Sum}) ->
 -doc #{equiv => summary_metric([], Count, Sum)}.
 -spec summary_metric(Count, Sum) -> prometheus_model:'Metric'() when
     Count :: non_neg_integer(),
-    Sum :: value().
+    Sum :: prometheus:value().
 summary_metric(Count, Sum) ->
     summary_metric([], Count, Sum).
 
@@ -250,8 +250,7 @@ summary_metric(Count, Sum) ->
 -spec summary_metric(Labels, Count, Sum) -> prometheus_model:'Metric'() when
     Labels :: prometheus:labels(),
     Count :: non_neg_integer(),
-    Sum :: value(),
-    Quantiles :: list().
+    Sum :: prometheus:value().
 summary_metric(Labels, Count, Sum) ->
     summary_metric(Labels, Count, Sum, []).
 
@@ -273,7 +272,7 @@ summary_metric(Labels, Count, Sum, Quantiles) ->
 
 -doc #{equiv => lists:map(fun histogram_metric/1, Specs)}.
 -spec histogram_metrics(Specs) -> [prometheus_model:'Metric'()] when
-    Specs :: [histogram()].
+    Specs :: [prometheus:histogram()].
 histogram_metrics(Specs) ->
     lists:map(fun histogram_metric/1, Specs).
 
@@ -287,9 +286,9 @@ histogram_metric({Buckets, Count, Sum}) ->
 
 -doc #{equiv => histogram_metric([], Buckets, Count, Sum)}.
 -spec histogram_metric(Buckets, Count, Sum) -> prometheus_model:'Metric'() when
-    Buckets :: buckets(),
+    Buckets :: prometheus:buckets(),
     Count :: non_neg_integer(),
-    Sum :: value().
+    Sum :: prometheus:value().
 histogram_metric(Buckets, Count, Sum) ->
     histogram_metric([], Buckets, Count, Sum).
 
@@ -330,7 +329,7 @@ fail with an error.
 """.
 -doc #{equiv => lists:map(fun label_pair/1, Labels)}.
 -spec label_pairs(Labels) -> [prometheus_model:'LabelPair'()] when
-    Labels :: labels().
+    Labels :: prometheus:labels().
 label_pairs(B) when is_binary(B) ->
     B;
 label_pairs(Labels) ->

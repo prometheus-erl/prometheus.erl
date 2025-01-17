@@ -140,13 +140,9 @@ deregister(Registry, Name) ->
 set_default(Registry, Name) ->
     Configuration = get_configuration(Registry, Name),
     #{compress_limit := CompressLimit} = Configuration,
-    ets:insert_new(?TABLE, {
-        key(Registry, Name, []),
-        0,
-        0,
-        quantile(Configuration),
-        CompressLimit
-    }).
+    Key = key(Registry, Name, []),
+    Quantile = quantile(Configuration),
+    ets:insert_new(?TABLE, {Key, 0, 0, Quantile, CompressLimit}).
 
 -doc #{equiv => observe(default, Name, [], Value)}.
 -spec observe(prometheus_metric:name(), number()) -> ok.
@@ -154,7 +150,7 @@ observe(Name, Value) ->
     observe(default, Name, [], Value).
 
 -doc #{equiv => observe(default, Name, LabelValues, Value)}.
--spec observe(prometheus_metric:name(), list(), number()) -> ok.
+-spec observe(prometheus_metric:name(), prometheus_metric:labels(), number()) -> ok.
 observe(Name, LabelValues, Value) ->
     observe(default, Name, LabelValues, Value).
 
@@ -166,17 +162,18 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec observe(prometheus_registry:registry(), prometheus_metric:name(), list(), number()) -> ok.
+-spec observe(
+    prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels(), number()
+) -> ok.
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     Key = key(Registry, Name, LabelValues),
     case ets:lookup(?TABLE, Key) of
         [] ->
             insert_metric(Registry, Name, LabelValues, Value, fun observe/4);
         [{Key, Count, S, Q, CompressLimit}] ->
-            ets:insert(
-                ?TABLE,
-                {Key, Count + 1, S + Value, quantile_add(Q, Value, CompressLimit), CompressLimit}
-            )
+            Quantile = quantile_add(Q, Value, CompressLimit),
+            Elem = {Key, Count + 1, S + Value, Quantile, CompressLimit},
+            ets:insert(?TABLE, Elem)
     end,
     ok;
 observe(_Registry, _Name, _LabelValues, Value) ->
@@ -188,7 +185,8 @@ observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
 -doc #{equiv => observe_duration(default, Name, LabelValues, Fun)}.
--spec observe_duration(prometheus_metric:name(), list(), fun(() -> term())) -> term().
+-spec observe_duration(prometheus_metric:name(), prometheus_metric:labels(), fun(() -> term())) ->
+    term().
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
 
@@ -201,7 +199,9 @@ Raises:
 * `{invalid_value, Value, Message}` if `Fun` isn't a function.
 """.
 -spec observe_duration(
-    prometheus_registry:registry(), prometheus_metric:name(), list(), fun(() -> term())
+    prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels(), fun(
+        () -> term()
+    )
 ) ->
     term().
 observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun) ->
@@ -220,7 +220,7 @@ remove(Name) ->
     remove(default, Name, []).
 
 -doc #{equiv => remove(default, Name, LabelValues)}.
--spec remove(prometheus_metric:name(), list()) -> boolean().
+-spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -231,7 +231,8 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
+-spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
+    boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case
@@ -253,7 +254,7 @@ reset(Name) ->
     reset(default, Name, []).
 
 -doc #{equiv => reset(default, Name, LabelValues)}.
--spec reset(prometheus_metric:name(), list()) -> boolean().
+-spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -264,7 +265,8 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
+-spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
+    boolean().
 reset(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     Configuration = prometheus_metric:mf_data(MF),
@@ -289,7 +291,8 @@ value(Name) ->
     value(default, Name, []).
 
 -doc #{equiv => value(default, Name, LabelValues)}.
--spec value(prometheus_metric:name(), list()) -> {integer(), number()} | undefined.
+-spec value(prometheus_metric:name(), prometheus_metric:labels()) ->
+    {integer(), number()} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -304,18 +307,14 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
+-spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     {integer(), number()} | undefined.
 value(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     DU = prometheus_metric:mf_duration_unit(MF),
     #{quantiles := QNs} = prometheus_metric:mf_data(MF),
-
-    case
-        ets:select(?TABLE, [
-            {{{Registry, Name, LabelValues, '_'}, '$1', '$2', '$3', '_'}, [], ['$$']}
-        ])
-    of
+    Spec = [{{{Registry, Name, LabelValues, '_'}, '$1', '$2', '$3', '_'}, [], ['$$']}],
+    case ets:select(?TABLE, Spec) of
         [] ->
             undefined;
         Values ->
@@ -333,38 +332,35 @@ values(Registry, Name) ->
             DU = prometheus_metric:mf_duration_unit(MF),
             Labels = prometheus_metric:mf_labels(MF),
             #{quantiles := QNs} = Configuration = prometheus_metric:mf_data(MF),
-
             MFValues = load_all_values(Registry, Name),
+            Foldl = fun
+                ([_, 0, _, _], ResAcc) ->
+                    %% Ignore quantile evaluation if no data are provided
+                    ResAcc;
+                ([L, C, S, QE], ResAcc) ->
+                    {PrevCount, PrevSum, PrevQE} = maps:get(
+                        L, ResAcc, {0, 0, quantile(Configuration)}
+                    ),
+                    ResAcc#{L => {PrevCount + C, PrevSum + S, quantile_merge(PrevQE, QE)}}
+            end,
             ReducedMap = lists:foldl(
-                fun
-                    ([_, 0, _, _], ResAcc) ->
-                        %% Ignore quantile evaluation if no data are provided
-                        ResAcc;
-                    ([L, C, S, QE], ResAcc) ->
-                        {PrevCount, PrevSum, PrevQE} = maps:get(
-                            L, ResAcc, {0, 0, quantile(Configuration)}
-                        ),
-                        ResAcc#{L => {PrevCount + C, PrevSum + S, quantile_merge(PrevQE, QE)}}
-                end,
+                Foldl,
                 #{},
                 MFValues
             ),
             ReducedMapList = lists:sort(maps:to_list(ReducedMap)),
-            lists:foldr(
-                fun({LabelValues, {Count, Sum, QE}}, Acc) ->
-                    [
-                        {
-                            lists:zip(Labels, LabelValues),
-                            Count,
-                            prometheus_time:maybe_convert_to_du(DU, Sum),
-                            quantile_values(QE, QNs)
-                        }
-                        | Acc
-                    ]
-                end,
-                [],
-                ReducedMapList
-            )
+            Foldr = fun({LabelValues, {Count, Sum, QE}}, Acc) ->
+                [
+                    {
+                        lists:zip(Labels, LabelValues),
+                        Count,
+                        prometheus_time:maybe_convert_to_du(DU, Sum),
+                        quantile_values(QE, QNs)
+                    }
+                    | Acc
+                ]
+            end,
+            lists:foldr(Foldr, [], ReducedMapList)
     end.
 
 %%====================================================================
@@ -383,10 +379,7 @@ deregister_cleanup(Registry) ->
 collect_mf(Registry, Callback) ->
     [
         Callback(create_summary(Name, Help, {CLabels, Labels, Registry, DU, Data}))
-     || [Name, {Labels, Help}, CLabels, DU, Data] <- prometheus_metric:metrics(
-            ?TABLE,
-            Registry
-        )
+     || [Name, {Labels, Help}, CLabels, DU, Data] <- prometheus_metric:metrics(?TABLE, Registry)
     ],
     ok.
 
@@ -396,34 +389,28 @@ collect_mf(Registry, Callback) ->
 collect_metrics(Name, {CLabels, Labels, Registry, DU, Configuration}) ->
     #{quantiles := QNs} = Configuration,
     MFValues = load_all_values(Registry, Name),
-    ReducedMap = lists:foldl(
-        fun
-            ([_, 0, _, _], ResAcc) ->
-                %% Ignore quantile evaluation if no data are provided
-                ResAcc;
-            ([L, C, S, QE], ResAcc) ->
-                {PrevCount, PrevSum, PrevQE} = maps:get(L, ResAcc, {0, 0, quantile(Configuration)}),
-                ResAcc#{L => {PrevCount + C, PrevSum + S, quantile_merge(PrevQE, QE)}}
-        end,
-        #{},
-        MFValues
-    ),
+    Foldl = fun
+        ([_, 0, _, _], ResAcc) ->
+            %% Ignore quantile evaluation if no data are provided
+            ResAcc;
+        ([L, C, S, QE], ResAcc) ->
+            {PrevCount, PrevSum, PrevQE} = maps:get(L, ResAcc, {0, 0, quantile(Configuration)}),
+            ResAcc#{L => {PrevCount + C, PrevSum + S, quantile_merge(PrevQE, QE)}}
+    end,
+    ReducedMap = lists:foldl(Foldl, #{}, MFValues),
     ReducedMapList = lists:sort(maps:to_list(ReducedMap)),
-    lists:foldr(
-        fun({LabelValues, {Count, Sum, QE}}, Acc) ->
-            [
-                prometheus_model_helpers:summary_metric(
-                    CLabels ++ lists:zip(Labels, LabelValues),
-                    Count,
-                    prometheus_time:maybe_convert_to_du(DU, Sum),
-                    quantile_values(QE, QNs)
-                )
-                | Acc
-            ]
-        end,
-        [],
-        ReducedMapList
-    ).
+    Foldr = fun({LabelValues, {Count, Sum, QE}}, Acc) ->
+        [
+            prometheus_model_helpers:summary_metric(
+                CLabels ++ lists:zip(Labels, LabelValues),
+                Count,
+                prometheus_time:maybe_convert_to_du(DU, Sum),
+                quantile_values(QE, QNs)
+            )
+            | Acc
+        ]
+    end,
+    lists:foldr(Foldr, [], ReducedMapList).
 
 %%====================================================================
 %% Private Parts
@@ -461,10 +448,8 @@ insert_metric(Registry, Name, LabelValues, Value, ConflictCB) ->
     Configuration = prometheus_metric:mf_data(MF),
     #{compress_limit := CompressLimit} = Configuration,
     Quantile = quantile(Configuration, Value),
-
-    case
-        ets:insert_new(?TABLE, {key(Registry, Name, LabelValues), 1, Value, Quantile, CompressLimit})
-    of
+    Elem = {key(Registry, Name, LabelValues), 1, Value, Quantile, CompressLimit},
+    case ets:insert_new(?TABLE, Elem) of
         %% some sneaky process already inserted
         false ->
             ConflictCB(Registry, Name, LabelValues, Value);
@@ -510,19 +495,17 @@ compress_limit_from_spec(Spec) ->
     prometheus_metric_spec:get_value(compress_limit, Spec, default_compress_limit()).
 
 validate_targets(Targets) when is_list(Targets) ->
-    lists:foreach(
-        fun
-            ({Q, _E}) when not is_float(Q) ->
-                erlang:error({invalid_targets, "target quantile value should be float"});
-            ({_Q, E}) when not is_float(E) ->
-                erlang:error({invalid_targets, "target error value should be float"});
-            ({_, _}) ->
-                ok;
-            (_) ->
-                erlang:error({invalid_targets, "targets should be tuples of quantile and error"})
-        end,
-        Targets
-    );
+    Fun = fun
+        ({Q, _E}) when not is_float(Q) ->
+            erlang:error({invalid_targets, "target quantile value should be float"});
+        ({_Q, E}) when not is_float(E) ->
+            erlang:error({invalid_targets, "target error value should be float"});
+        ({_, _}) ->
+            ok;
+        (_) ->
+            erlang:error({invalid_targets, "targets should be tuples of quantile and error"})
+    end,
+    lists:foreach(Fun, Targets);
 validate_targets(_Targets) ->
     erlang:error({invalid_targets, "targets should be a list of tuples"}).
 
@@ -550,24 +533,19 @@ quantile_values(Q, QNs) ->
     [{QN, quantile_estimator:quantile(QN, Q)} || QN <- QNs].
 
 fold_quantiles(QList) ->
-    lists:foldl(
-        fun
-            (Q, init) -> Q;
-            (Q1, Q2) -> quantile_merge(Q1, Q2)
-        end,
-        init,
-        QList
-    ).
+    Fun = fun
+        (Q, init) -> Q;
+        (Q1, Q2) -> quantile_merge(Q1, Q2)
+    end,
+    lists:foldl(Fun, init, QList).
 
 quantile_merge(QE1, QE2) ->
     #quantile_estimator{samples_count = N1, data = Data1, invariant = Invariant} = QE1,
     #quantile_estimator{samples_count = N2, data = Data2} = QE2,
-
     quantile_estimator:compress(#quantile_estimator{
         %% Both these fields will be replaced by compression
         data_count = 0,
         inserts_since_compression = 0,
-
         samples_count = N1 + N2,
         data = Data1 ++ Data2,
         invariant = Invariant

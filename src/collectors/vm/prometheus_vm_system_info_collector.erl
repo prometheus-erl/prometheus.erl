@@ -108,17 +108,8 @@ By default all metrics are enabled.
 
 -behaviour(prometheus_collector).
 
-%%====================================================================
-%% Macros
-%%====================================================================
-
 -define(METRIC_NAME_PREFIX, "erlang_vm_").
 
-%%====================================================================
-%% Collector API
-%%====================================================================
-
-%% @private
 -doc false.
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(_) ->
@@ -128,7 +119,6 @@ deregister_cleanup(_) ->
 -spec collect_mf(_Registry, Callback) -> ok when
     _Registry :: prometheus_registry:registry(),
     Callback :: prometheus_collector:collect_mf_callback().
-%% @private
 collect_mf(_Registry, Callback) ->
     Metrics = metrics(),
     EnabledMetrics = enabled_metrics(),

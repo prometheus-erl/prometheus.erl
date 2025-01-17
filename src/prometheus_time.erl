@@ -109,9 +109,11 @@ prometheus_histogram:value(duration_seconds).
     | seconds
     | minutes
     | hours
-    | days
-    | undefined
-    | false.
+    | days.
+
+-type maybe_duration_unit() :: false | undefined | duration_unit().
+
+-export_type([duration_unit/0, maybe_duration_unit/0]).
 
 -spec duration_unit_from_string(string()) -> duration_unit() | undefined.
 duration_unit_from_string(Str) ->

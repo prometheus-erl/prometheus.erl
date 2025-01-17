@@ -115,20 +115,11 @@ emit_mf_metrics(Fd, #'MetricFamily'{name = Name, metric = Metrics}) ->
     ),
     file:write(Fd, Bytes).
 
-render_metric(Name, #'Metric'{
-    label = Labels,
-    counter = #'Counter'{value = Value}
-}) ->
+render_metric(Name, #'Metric'{label = Labels, counter = #'Counter'{value = Value}}) ->
     render_series(Name, render_labels(Labels), Value);
-render_metric(Name, #'Metric'{
-    label = Labels,
-    gauge = #'Gauge'{value = Value}
-}) ->
+render_metric(Name, #'Metric'{label = Labels, gauge = #'Gauge'{value = Value}}) ->
     render_series(Name, render_labels(Labels), Value);
-render_metric(Name, #'Metric'{
-    label = Labels,
-    untyped = #'Untyped'{value = Value}
-}) ->
+render_metric(Name, #'Metric'{label = Labels, untyped = #'Untyped'{value = Value}}) ->
     render_series(Name, render_labels(Labels), Value);
 render_metric(Name, #'Metric'{
     label = Labels,
@@ -183,10 +174,7 @@ render_metric(Name, #'Metric'{
     Bytes3 = <<Bytes2/binary, (render_series([Name, "_sum"], LString, Sum))/binary>>,
     Bytes3.
 
-emit_histogram_bucket(Name, LString, #'Bucket'{
-    cumulative_count = BCount,
-    upper_bound = BBound
-}) ->
+emit_histogram_bucket(Name, LString, #'Bucket'{cumulative_count = BCount, upper_bound = BBound}) ->
     BLValue = bound_to_label_value(BBound),
     render_series(
         [Name, "_bucket"],
@@ -294,11 +282,7 @@ escape_label_char(X) ->
 
 -doc false.
 -spec has_special_char(binary()) -> boolean().
-has_special_char(<<C:8, _/bitstring>>) when
-    C =:= $\\;
-    C =:= $\n;
-    C =:= $"
-->
+has_special_char(<<C:8, _/bitstring>>) when C =:= $\\; C =:= $\n; C =:= $" ->
     true;
 has_special_char(<<_:8, Rest/bitstring>>) ->
     has_special_char(Rest);

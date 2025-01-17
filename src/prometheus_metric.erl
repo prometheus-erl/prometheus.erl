@@ -16,12 +16,10 @@
     remove_labels/4
 ]).
 
--export_type([name/0, help/0, value/0, duration_unit/0, call_enabled/0, spec/0]).
+-export_type([name/0, value/0, labels/0, help/0, duration_unit/0, call_enabled/0, spec/0]).
 
 -type name() :: atom() | binary() | nonempty_string() | iolist().
-
 -type help() :: binary() | nonempty_string().
-
 -type duration_unit() :: prometheus_time:duration_unit().
 -type call_enabled() :: boolean().
 -type counter_value() :: number().
@@ -34,6 +32,7 @@
     | summary_value()
     | histogram_value()
     | undefined.
+-type labels() :: [name()].
 -type spec() :: proplists:proplist().
 
 -callback new(Spec :: spec()) -> ok.
@@ -84,9 +83,8 @@ insert_mf(Table, Module, Spec) ->
     {Registry, Name, Labels, Help, CLabels, DurationUnit, Data} =
         prometheus_metric_spec:extract_common_params(Spec),
     prometheus_registry:register_collector(Registry, Module),
-    case
-        ets:insert_new(Table, {{Registry, mf, Name}, {Labels, Help}, CLabels, DurationUnit, Data})
-    of
+    Tuple = {{Registry, mf, Name}, {Labels, Help}, CLabels, DurationUnit, Data},
+    case ets:insert_new(Table, Tuple) of
         true ->
             maybe_set_default(Module, Registry, Name, Labels),
             true;
@@ -188,9 +186,7 @@ maybe_set_default(_, _, _, _) ->
     ok.
 
 -doc false.
--spec remove_labels(Table, Registry, Name, LValues) ->
-    boolean() | no_return()
-when
+-spec remove_labels(Table, Registry, Name, LValues) -> boolean() | no_return() when
     Table :: atom(),
     Registry :: prometheus_registry:registry(),
     Name :: name(),

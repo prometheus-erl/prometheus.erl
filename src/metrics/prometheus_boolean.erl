@@ -131,7 +131,8 @@ set(Name, Value) ->
     set(default, Name, [], Value).
 
 -doc #{equiv => set(default, Name, LabelValues, Value)}.
--spec set(prometheus_metric:name(), list(), prometheus:prometheus_boolean()) -> ok.
+-spec set(prometheus_metric:name(), prometheus_metric:labels(), prometheus:prometheus_boolean()) ->
+    ok.
 set(Name, LabelValues, Value) ->
     set(default, Name, LabelValues, Value).
 
@@ -156,15 +157,14 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if boolean with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec set(
-    prometheus_registry:registry(),
-    prometheus_metric:name(),
-    list(),
-    prometheus_model_helpers:prometheus_boolean()
-) -> ok.
-set(Registry, Name, LabelValues, Value0) ->
-    Value = prometheus_model_helpers:boolean_value(Value0),
-    set_(Registry, Name, LabelValues, Value).
+-spec set(Registry, Name, LabelValues, Value) -> ok when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:labels(),
+    Value :: prometheus:prometheus_boolean().
+set(Registry, Name, LabelValues, Value) ->
+    Value1 = prometheus_model_helpers:boolean_value(Value),
+    set_(Registry, Name, LabelValues, Value1).
 
 -doc #{equiv => toggle(default, Name, [])}.
 -spec toggle(prometheus_metric:name()) -> ok.
@@ -172,7 +172,7 @@ toggle(Name) ->
     toggle(default, Name, []).
 
 -doc #{equiv => toggle(default, Name, LabelValues)}.
--spec toggle(prometheus_metric:name(), list()) -> ok.
+-spec toggle(prometheus_metric:name(), prometheus_metric:labels()) -> ok.
 toggle(Name, LabelValues) ->
     toggle(default, Name, LabelValues).
 
@@ -187,14 +187,13 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if boolean with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec toggle(prometheus_registry:registry(), prometheus_metric:name(), list()) -> ok.
+-spec toggle(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
+    ok.
 toggle(Registry, Name, LabelValues) ->
+    Key = {Registry, Name, LabelValues},
+    Spec = {?BOOLEAN_POS, 1, 1, 0},
     try
-        ets:update_counter(
-            ?TABLE,
-            {Registry, Name, LabelValues},
-            {?BOOLEAN_POS, 1, 1, 0}
-        )
+        ets:update_counter(?TABLE, Key, Spec)
     catch
         error:badarg ->
             save_toggle(Registry, Name, LabelValues)
@@ -206,8 +205,8 @@ toggle(Registry, Name, LabelValues) ->
 remove(Name) ->
     remove(default, Name, []).
 
--doc "Equivalent to [remove(default, Name, LabelValues)](`remove/3`).".
--spec remove(prometheus_metric:name(), list()) -> boolean().
+-doc #{equiv => remove(default, Name, LabelValues)}.
+-spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -219,7 +218,8 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if boolean with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
+-spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
+    boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:remove_labels(?TABLE, Registry, Name, LabelValues).
 
@@ -229,7 +229,7 @@ reset(Name) ->
     reset(default, Name, []).
 
 -doc #{equiv => reset(default, Name, LabelValues)}.
--spec reset(prometheus_metric:name(), list()) -> boolean().
+-spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -241,7 +241,8 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if boolean with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
+-spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
+    boolean().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     ets:update_element(?TABLE, {Registry, Name, LabelValues}, {?BOOLEAN_POS, 0}).
@@ -252,7 +253,7 @@ value(Name) ->
     value(default, Name, []).
 
 -doc #{equiv => value(default, Name, LabelValues)}.
--spec value(prometheus_metric:name(), list()) -> boolean() | undefined.
+-spec value(prometheus_metric:name(), prometheus_metric:labels()) -> boolean() | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -265,7 +266,7 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if boolean named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
+-spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     boolean() | undefined.
 value(Registry, Name, LabelValues) ->
     case ets:lookup(?TABLE, {Registry, Name, LabelValues}) of
@@ -309,10 +310,7 @@ deregister_cleanup(Registry) ->
 collect_mf(Registry, Callback) ->
     [
         Callback(create_boolean(Name, Help, {CLabels, Labels, Registry}))
-     || [Name, {Labels, Help}, CLabels, _, _] <- prometheus_metric:metrics(
-            ?TABLE,
-            Registry
-        )
+     || [Name, {Labels, Help}, CLabels, _, _] <- prometheus_metric:metrics(?TABLE, Registry)
     ],
     ok.
 
@@ -334,19 +332,14 @@ deregister_select(Registry, Name) ->
     [{{{Registry, Name, '_'}, '_'}, [], [true]}].
 
 set_(Registry, Name, LabelValues, Value) ->
-    case
-        ets:update_element(
-            ?TABLE,
-            {Registry, Name, LabelValues},
-            {?BOOLEAN_POS, Value}
-        )
-    of
+    Key = {Registry, Name, LabelValues},
+    Spec = {?BOOLEAN_POS, Value},
+    case ets:update_element(?TABLE, Key, Spec) of
         false ->
             insert_metric(Registry, Name, LabelValues, Value, fun set_/4);
         true ->
             ok
-    end,
-    ok.
+    end.
 
 save_toggle(Registry, Name, LabelValues) ->
     case ets:lookup(?TABLE, {Registry, Name, LabelValues}) of

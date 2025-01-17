@@ -16,7 +16,7 @@
     | {exponential, number(), number(), pos_integer()}
     | buckets().
 
--export_type([bucket_bound/0, buckets/0]).
+-export_type([bucket_bound/0, buckets/0, config/0]).
 
 -doc "Histogram buckets constructor, returns `default/0` plus `infinity`".
 -spec new() -> buckets().
@@ -146,7 +146,7 @@ try_to_maintain_integer_bounds(Bound) when is_float(Bound) ->
         false -> Bound
     end.
 
--spec position(buckets(), fun((bucket_bound()) -> boolean()), pos_integer()) -> pos_integer().
+-spec position(buckets(), fun((bucket_bound()) -> boolean()), non_neg_integer()) -> pos_integer().
 position([], _Pred, _Pos) ->
     0;
 position([H | L], Pred, Pos) ->

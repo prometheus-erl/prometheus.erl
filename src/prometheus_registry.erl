@@ -92,10 +92,9 @@ register_collector(Collector) ->
     register_collector(default, Collector).
 
 -doc "Register a collector.".
--spec register_collector(
+-spec register_collector(Registry, Collector) -> ok when
     Registry :: prometheus_registry:registry(),
-    Collector :: prometheus_collector:collector()
-) -> ok.
+    Collector :: prometheus_collector:collector().
 register_collector(Registry, Collector) ->
     ets:insert(?TABLE, {Registry, Collector}),
     ok.
@@ -107,11 +106,9 @@ register_collectors(Collectors) ->
     register_collectors(default, Collectors).
 
 -doc "Registers collectors list.".
--spec register_collectors(
+-spec register_collectors(Registry, Collectors) -> ok when
     Registry :: prometheus_registry:registry(),
-    Collectors :: [prometheus_collector:collector()]
-) ->
-    ok.
+    Collectors :: [prometheus_collector:collector()].
 register_collectors(Registry, Collectors) ->
     [register_collector(Registry, Collector) || Collector <- Collectors],
     ok.
@@ -122,10 +119,9 @@ deregister_collector(Collector) ->
     deregister_collector(default, Collector).
 
 -doc "Unregisters a collector.".
--spec deregister_collector(
+-spec deregister_collector(Registry, Collector) -> ok when
     Registry :: prometheus_registry:registry(),
-    Collector :: prometheus_collector:collector()
-) -> ok.
+    Collector :: prometheus_collector:collector().
 deregister_collector(Registry, Collector) ->
     ets:delete_object(?TABLE, {Registry, Collector}),
     Collector:deregister_cleanup(Registry),

@@ -49,7 +49,6 @@
     prometheus_boolean/0
 ]).
 
-%% Application callbacks
 -export([start/2, stop/1]).
 -export([start/0, stop/0]).
 

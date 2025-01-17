@@ -24,34 +24,35 @@
 -endif.
 
 -doc false.
--spec registry(Spec :: prometheus_metric:spec()) -> any().
+-spec registry(Spec :: prometheus_metric:spec()) -> prometheus_registry:registry().
 registry(Spec) ->
     get_value(registry, Spec, default).
 
 -doc false.
--spec name(Spec :: prometheus_metric:spec()) -> any().
+-spec name(Spec :: prometheus_metric:spec()) -> prometheus_metric:name().
 name(Spec) ->
     Name = fetch_value(name, Spec),
     validate_metric_name(Name).
 
 -doc false.
--spec labels(Spec :: prometheus_metric:spec()) -> list().
+-spec labels(Spec :: prometheus_metric:spec()) -> prometheus_metric:labels().
 labels(Spec) ->
     Labels = get_value(labels, Spec, []),
     validate_metric_label_names(Labels).
 
 -doc false.
--spec help(Spec :: prometheus_metric:spec()) -> string().
+-spec help(Spec :: prometheus_metric:spec()) -> prometheus_metric:help().
 help(Spec) ->
     Help = fetch_value(help, Spec),
     validate_metric_help(Help).
 
 -doc false.
+-spec data(Spec :: prometheus_metric:spec()) -> any().
 data(Spec) ->
     get_value(data, Spec).
 
 -doc false.
--spec constant_labels(Spec :: prometheus_metric:spec()) -> list().
+-spec constant_labels(Spec :: prometheus_metric:spec()) -> [{atom(), term()}].
 constant_labels(Spec) ->
     case get_value(constant_labels, Spec, #{}) of
         CL when is_map(CL) ->
@@ -62,7 +63,7 @@ constant_labels(Spec) ->
     end.
 
 -doc false.
--spec duration_unit(Spec :: prometheus_metric:spec()) -> any().
+-spec duration_unit(Spec :: prometheus_metric:spec()) -> prometheus_time:maybe_duration_unit().
 duration_unit(Spec) ->
     Name = to_string(name(Spec)),
     NameDU = prometheus_time:duration_unit_from_string(Name),
@@ -85,8 +86,15 @@ duration_unit_from_spec(Spec) ->
     prometheus_time:validate_duration_unit(SDU).
 
 -doc false.
--spec extract_common_params(Spec :: prometheus_metric:spec()) ->
-    {any(), any(), list(), string(), list(), any(), any()}.
+-spec extract_common_params(Spec :: prometheus_metric:spec()) -> Return when
+    Return :: {Registry, Name, Labels, Help, CallTimeout, DurationUnit, Data},
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    Labels :: prometheus_metric:labels(),
+    Help :: prometheus_metric:help(),
+    CallTimeout :: [{atom(), term()}],
+    DurationUnit :: prometheus_time:maybe_duration_unit(),
+    Data :: any().
 extract_common_params(Spec) ->
     Registry = registry(Spec),
     Name = name(Spec),
@@ -155,7 +163,7 @@ validate_metric_name(RawName, ListName) ->
             erlang:error({invalid_metric_name, RawName, "metric name is invalid string"})
     end.
 
--spec validate_metric_label_names(list()) -> list().
+-spec validate_metric_label_names(list()) -> prometheus_metric:labels().
 validate_metric_label_names(RawLabels) when is_list(RawLabels) ->
     lists:map(fun validate_metric_label_name/1, RawLabels);
 validate_metric_label_names(RawLabels) ->

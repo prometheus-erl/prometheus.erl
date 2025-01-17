@@ -46,7 +46,7 @@ register_collectors() ->
 register_metrics() ->
     [declare_metric(Decl) || Decl <- default_metrics()].
 
--spec register_metrics([term()]) -> ok.
+-spec register_metrics([term()]) -> [boolean()].
 register_metrics(Metrics) ->
     DefaultMetrics0 = default_metrics(),
     DefaultMetrics1 = lists:usort(DefaultMetrics0 ++ Metrics),
@@ -77,19 +77,15 @@ declare_metric({Metric, Spec}) ->
 declare_metric({Registry, Metric, Spec}) ->
     declare_metric(Metric, [{registry, Registry}] ++ Spec).
 
-declare_metric(Metric, Spec) ->
-    Module = type_to_module(Metric),
-    Module:declare(Spec).
-
-type_to_module(counter) ->
-    prometheus_counter;
-type_to_module(gauge) ->
-    prometheus_gauge;
-type_to_module(summary) ->
-    prometheus_summary;
-type_to_module(histogram) ->
-    prometheus_histogram;
-type_to_module(boolean) ->
-    prometheus_boolean;
-type_to_module(Type) ->
-    Type.
+declare_metric(counter, Spec) ->
+    prometheus_counter:declare(Spec);
+declare_metric(gauge, Spec) ->
+    prometheus_gauge:declare(Spec);
+declare_metric(summary, Spec) ->
+    prometheus_summary:declare(Spec);
+declare_metric(histogram, Spec) ->
+    prometheus_histogram:declare(Spec);
+declare_metric(boolean, Spec) ->
+    prometheus_boolean:declare(Spec);
+declare_metric(Other, Spec) ->
+    Other:declare(Spec).

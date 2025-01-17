@@ -149,14 +149,14 @@ inc(Name) ->
 If the second argument is a list, equivalent to [inc(default, Name, LabelValues,
 1)](`inc/4`) otherwise equivalent to [inc(default, Name, [], Value)](`inc/4`).
 """.
--spec inc(prometheus_metric:name(), list() | non_neg_integer()) -> ok.
+-spec inc(prometheus_metric:name(), prometheus_metric:labels() | non_neg_integer()) -> ok.
 inc(Name, LabelValues) when is_list(LabelValues) ->
     inc(default, Name, LabelValues, 1);
 inc(Name, Value) ->
     inc(default, Name, [], Value).
 
 -doc #{equiv => inc(default, Name, LabelValues, Value)}.
--spec inc(prometheus_metric:name(), list(), non_neg_integer()) -> ok.
+-spec inc(prometheus_metric:name(), prometheus_metric:labels(), non_neg_integer()) -> ok.
 inc(Name, LabelValues, Value) ->
     inc(default, Name, LabelValues, Value).
 
@@ -169,19 +169,16 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if counter with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec inc(
-    prometheus_registry:registry(),
-    prometheus_metric:name(),
-    list(),
-    non_neg_integer()
-) -> ok.
+-spec inc(Registry, Name, LabelValues, Value) -> ok when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:labels(),
+    Value :: non_neg_integer().
 inc(Registry, Name, LabelValues, Value) when is_integer(Value), Value >= 0 ->
+    Key = key(Registry, Name, LabelValues),
+    Spec = {?ISUM_POS, Value},
     try
-        ets:update_counter(
-            ?TABLE,
-            key(Registry, Name, LabelValues),
-            {?ISUM_POS, Value}
-        )
+        ets:update_counter(?TABLE, Key, Spec)
     catch
         error:badarg ->
             insert_metric(Registry, Name, LabelValues, Value, fun inc/4)
@@ -189,12 +186,8 @@ inc(Registry, Name, LabelValues, Value) when is_integer(Value), Value >= 0 ->
     ok;
 inc(Registry, Name, LabelValues, Value) when is_number(Value), Value >= 0 ->
     Key = key(Registry, Name, LabelValues),
-    case
-        ets:select_replace(
-            ?TABLE,
-            [{{Key, '$1', '$2'}, [], [{{{Key}, '$1', {'+', '$2', Value}}}]}]
-        )
-    of
+    Spec = [{{Key, '$1', '$2'}, [], [{{{Key}, '$1', {'+', '$2', Value}}}]}],
+    case ets:select_replace(?TABLE, Spec) of
         0 ->
             insert_metric(Registry, Name, LabelValues, Value, fun inc/4);
         1 ->
@@ -211,7 +204,7 @@ remove(Name) ->
 
 -doc #{equiv => remove(default, Name, LabelValues)}.
 -doc "Equivalent to [remove(default, Name, LabelValues)](`remove/3`).".
--spec remove(prometheus_metric:name(), list()) -> boolean().
+-spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -223,18 +216,15 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if counter with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec remove(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
+-spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
+    boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    case
-        lists:flatten([
-            ets:take(
-                ?TABLE,
-                {Registry, Name, LabelValues, Scheduler}
-            )
-         || Scheduler <- schedulers_seq()
-        ])
-    of
+    List = [
+        ets:take(?TABLE, {Registry, Name, LabelValues, Scheduler})
+     || Scheduler <- schedulers_seq()
+    ],
+    case lists:flatten(List) of
         [] -> false;
         _ -> true
     end.
@@ -245,7 +235,7 @@ reset(Name) ->
     reset(default, Name, []).
 
 -doc #{equiv => reset(default, Name, LabelValues)}.
--spec reset(prometheus_metric:name(), list()) -> boolean().
+-spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -257,19 +247,16 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if counter with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec reset(prometheus_registry:registry(), prometheus_metric:name(), list()) -> boolean().
+-spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
+    boolean().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    case
-        lists:usort([
-            ets:update_element(
-                ?TABLE,
-                {Registry, Name, LabelValues, Scheduler},
-                [{?ISUM_POS, 0}, {?FSUM_POS, 0}]
-            )
-         || Scheduler <- schedulers_seq()
-        ])
-    of
+    Spec = [{?ISUM_POS, 0}, {?FSUM_POS, 0}],
+    List = [
+        ets:update_element(?TABLE, {Registry, Name, LabelValues, Scheduler}, Spec)
+     || Scheduler <- schedulers_seq()
+    ],
+    case lists:usort(List) of
         [_, _] -> true;
         [true] -> true;
         _ -> false
@@ -281,7 +268,7 @@ value(Name) ->
     value(default, Name, []).
 
 -doc #{equiv => value(default, Name, LabelValues)}.
--spec value(prometheus_metric:name(), list()) -> number() | undefined.
+-spec value(prometheus_metric:name(), prometheus_metric:labels()) -> number() | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -294,15 +281,12 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if counter named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """.
--spec value(prometheus_registry:registry(), prometheus_metric:name(), list()) ->
+-spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     number() | undefined.
 value(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    case
-        ets:select(?TABLE, [
-            {{{Registry, Name, LabelValues, '_'}, '$1', '$2'}, [], [{'+', '$1', '$2'}]}
-        ])
-    of
+    Spec = [{{{Registry, Name, LabelValues, '_'}, '$1', '$2'}, [], [{'+', '$1', '$2'}]}],
+    case ets:select(?TABLE, Spec) of
         [] -> undefined;
         List -> lists:sum(List)
     end.
@@ -316,9 +300,8 @@ values(Registry, Name) ->
             Labels = prometheus_metric:mf_labels(MF),
             MFValues = load_all_values(Registry, Name),
             LabelValues = reduce_label_values(MFValues),
-            serialize_label_values(
-                fun(VLabels, Value) -> {VLabels, Value} end, Labels, LabelValues
-            )
+            Fun = fun(VLabels, Value) -> {VLabels, Value} end,
+            serialize_label_values(Fun, Labels, LabelValues)
     end.
 
 %%====================================================================
@@ -337,10 +320,7 @@ deregister_cleanup(Registry) ->
 collect_mf(Registry, Callback) ->
     [
         Callback(create_counter(Name, Help, {CLabels, Labels, Registry}))
-     || [Name, {Labels, Help}, CLabels, _, _] <- prometheus_metric:metrics(
-            ?TABLE,
-            Registry
-        )
+     || [Name, {Labels, Help}, CLabels, _, _] <- prometheus_metric:metrics(?TABLE, Registry)
     ],
     ok.
 
@@ -350,15 +330,10 @@ collect_mf(Registry, Callback) ->
 collect_metrics(Name, {CLabels, Labels, Registry}) ->
     MFValues = load_all_values(Registry, Name),
     LabelValues = reduce_label_values(MFValues),
-    serialize_label_values(
-        fun(VLabels, Value) ->
-            prometheus_model_helpers:counter_metric(
-                CLabels ++ VLabels, Value
-            )
-        end,
-        Labels,
-        LabelValues
-    ).
+    Fun = fun(VLabels, Value) ->
+        prometheus_model_helpers:counter_metric(CLabels ++ VLabels, Value)
+    end,
+    serialize_label_values(Fun, Labels, LabelValues).
 
 %%====================================================================
 %% Private Parts
@@ -390,23 +365,17 @@ key(Registry, Name, LabelValues) ->
     {Registry, Name, LabelValues, Rnd}.
 
 reduce_label_values(MFValues) ->
-    lists:foldl(
-        fun([Labels, I, F], ResAcc) ->
-            PrevSum = maps:get(Labels, ResAcc, 0),
-            ResAcc#{Labels => PrevSum + I + F}
-        end,
-        #{},
-        MFValues
-    ).
+    Fold = fun([Labels, I, F], ResAcc) ->
+        PrevSum = maps:get(Labels, ResAcc, 0),
+        ResAcc#{Labels => PrevSum + I + F}
+    end,
+    lists:foldl(Fold, #{}, MFValues).
 
 serialize_label_values(Fun, Labels, Values) ->
-    maps:fold(
-        fun(LabelValues, Value, L) ->
-            [Fun(lists:zip(Labels, LabelValues), Value) | L]
-        end,
-        [],
-        Values
-    ).
+    Fold = fun(LabelValues, Value, L) ->
+        [Fun(lists:zip(Labels, LabelValues), Value) | L]
+    end,
+    maps:fold(Fold, [], Values).
 
 create_counter(Name, Help, Data) ->
     prometheus_model_helpers:create_mf(Name, Help, counter, ?MODULE, Data).

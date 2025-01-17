@@ -100,7 +100,6 @@ add_metric_family({Name, Type, Help, Metrics}, Callback) ->
 
 metrics(EnabledMetrics) ->
     {Participants, Coordinators} = get_tm_info(EnabledMetrics),
-
     [
         {held_locks, gauge, "Number of held locks.", fun() -> ets:info(mnesia_held_locks, size) end},
         {lock_queue, gauge, "Number of transactions waiting for a lock.", fun() ->
