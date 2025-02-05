@@ -8,7 +8,7 @@
 %% ==Exported metrics==
 %%
 %% Metrics pertaining to processes may apply to three different types
-%% of proccesses depending on the distribution transport:
+%% of processes depending on the distribution transport:
 %% `type="dist"', `type="tls_connection"' or `type="tls_sender"'.
 %%
 %% <ul>

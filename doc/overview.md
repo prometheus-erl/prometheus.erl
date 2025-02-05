@@ -220,7 +220,7 @@ Exporters usually tightly coupled with web server and are singletons. They shoul
  - `format` - scrape format as module name i.e. `prometheus_text_format` or `prometheus_protobuf_format`.
 Exporter-specific options should be under `<exporter_name>_exporter` for erlang or `<Exporter_name>Exporter` for Elixir i.e. `PlugsExporter` or `elli_exporter`
 
-Collectors collect integration specific metrics i.e. ecto timings, process informations and so on.
+Collectors collect integration specific metrics i.e. ecto timings, process information and so on.
 Their configuration should be under `<collector_name>_collector`for erlang or `<Collector_name>Collector` for Elixir i.e. `process_collector`, `EctoCollector` and so on.
 
 ### Naming

@@ -19,7 +19,7 @@ distributed connection the metric is about.
 ### <a name="Exported_metrics">Exported metrics</a> ###
 
 Metrics pertaining to processes may apply to three different types
-of proccesses depending on the distribution transport:
+of processes depending on the distribution transport:
 `type="dist"`, `type="tls_connection"` or `type="tls_sender"`.
 
 * `erlang_vm_dist_recv_bytes`<br />
