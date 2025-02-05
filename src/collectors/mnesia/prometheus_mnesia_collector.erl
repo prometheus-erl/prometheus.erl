@@ -51,6 +51,16 @@
 %%     Type: gauge.<br/>
 %%     Total number of bytes allocated by all mnesia tables.
 %%   </li>
+%%   <li>
+%%     `erlang_mnesia_tablewise_memory_usage_bytes'<br/>
+%%     Type: gauge.<br/>
+%%     Number of bytes allocated per mnesia table
+%%   </li>
+%%   <li>
+%%     `erlang_mnesia_tablewise_size'<br/>
+%%     Type: gauge.<br/>
+%%     Number of rows present per table
+%%   </li>
 %% </ul>
 %%
 %% ==Configuration==
@@ -58,16 +68,8 @@
 %% Metrics exported by this collector can be configured via
 %% `mnesia_collector_metrics' key of `prometheus' app environment.
 %%
-%% Available options:
-%% - `held_locks' for `erlang_mnesia_held_locks';
-%% - `lock_queue' for `erlang_mnesia_lock_queue';
-%% - `transaction_participants' for `erlang_mnesia_transaction_participants';
-%% - `transaction_coordinators' for `erlang_mnesia_transaction_coordinators';
-%% - `transaction_failures' for `erlang_mnesia_failed_transactions';
-%% - `transaction_commits' for `erlang_mnesia_committed_transactions';
-%% - `transaction_log_writes' for `erlang_mnesia_logged_transactions';
-%% - `transaction_restarts' for `erlang_mnesia_restarted_transactions';
-%% - `memory_usage_bytes' for `erlang_mnesia_memory_usage_bytes'.
+%% Remove the `erlang_mnesia_' prefix from the metric name when listing.
+%% For example list `held_locks' to enable `erlang_mnesia_held_locks'.
 %%
 %% By default all metrics are enabled.
 %%
@@ -121,9 +123,6 @@ add_metric_family({Name, Type, Help, Metrics}, Callback) ->
 
 metrics(EnabledMetrics) ->
   {Participants, Coordinators} = get_tm_info(EnabledMetrics),
-  MemoryUsage = get_memory_usage(),
-  TablewiseMemoryUsage = get_tablewise_memory_usage(),
-  TablewiseSize = get_tablewise_size(),
 
   [{held_locks, gauge,
     "Number of held locks.",
@@ -151,13 +150,13 @@ metrics(EnabledMetrics) ->
     fun() -> mnesia:system_info(transaction_restarts) end},
    {memory_usage_bytes, gauge,
     "Total number of bytes allocated by all mnesia tables",
-    fun() -> MemoryUsage end},
+    fun() -> get_memory_usage() end},
    {tablewise_memory_usage_bytes, gauge,
     "Number of bytes allocated per mnesia table",
-    fun() -> TablewiseMemoryUsage end},
+    fun() -> get_tablewise_memory_usage() end},
    {tablewise_size, gauge,
     "Number of rows present per table",
-    fun() -> TablewiseSize end}
+    fun() -> get_tablewise_size() end}
     ].
 
 %%====================================================================
