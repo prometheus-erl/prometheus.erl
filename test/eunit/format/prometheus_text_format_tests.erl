@@ -46,6 +46,7 @@ prometheus_format_test_() ->
     fun test_quantile_summary/1,
     fun test_quantile_dsummary/1,
     fun test_histogram/1,
+    fun test_histogram_float/1,
     fun test_dhistogram/1]}.
 
 content_type_test() ->
@@ -177,6 +178,34 @@ http_request_duration_milliseconds_bucket{method=\"get\",le=\"1000\"} 9
 http_request_duration_milliseconds_bucket{method=\"get\",le=\"+Inf\"} 9
 http_request_duration_milliseconds_count{method=\"get\"} 9
 http_request_duration_milliseconds_sum{method=\"get\"} 2622
+
+">>, prometheus_text_format:format()).
+
+test_histogram_float(_) ->
+  prometheus_histogram:new([{name, http_request_duration_seconds},
+                            {labels, [method]},
+                            {buckets, [0.01, 0.1, 0.5, 1, 3]},
+                            {help, "Http Request execution time"},
+                            {duration_unit, false}]),
+  prometheus_histogram:observe(http_request_duration_seconds, [get], 0.95),
+  prometheus_histogram:observe(http_request_duration_seconds, [get], 0.1),
+  prometheus_histogram:observe(http_request_duration_seconds, [get], 0.102),
+  prometheus_histogram:observe(http_request_duration_seconds, [get], 0.15),
+  prometheus_histogram:observe(http_request_duration_seconds, [get], 0.25),
+  prometheus_histogram:observe(http_request_duration_seconds, [get], 0.35),
+  prometheus_histogram:observe(http_request_duration_seconds, [get], 0.55),
+  prometheus_histogram:observe(http_request_duration_seconds, [get], 1.55),
+  prometheus_histogram:observe(http_request_duration_seconds, [get], 2.05),
+  ?_assertEqual(<<"# TYPE http_request_duration_seconds histogram
+# HELP http_request_duration_seconds Http Request execution time
+http_request_duration_seconds_bucket{method=\"get\",le=\"0.01\"} 0
+http_request_duration_seconds_bucket{method=\"get\",le=\"0.1\"} 1
+http_request_duration_seconds_bucket{method=\"get\",le=\"0.5\"} 5
+http_request_duration_seconds_bucket{method=\"get\",le=\"1\"} 7
+http_request_duration_seconds_bucket{method=\"get\",le=\"3\"} 9
+http_request_duration_seconds_bucket{method=\"get\",le=\"+Inf\"} 9
+http_request_duration_seconds_count{method=\"get\"} 9
+http_request_duration_seconds_sum{method=\"get\"} 6.052
 
 ">>, prometheus_text_format:format()).
 

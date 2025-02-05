@@ -240,7 +240,7 @@ escape_help_char(X) ->
 bound_to_label_value(Bound) when is_integer(Bound) ->
   integer_to_list(Bound);
 bound_to_label_value(Bound) when is_float(Bound) ->
-  float_to_list(Bound);
+  float_to_list(Bound, [{decimals, 10}, compact]);
 bound_to_label_value(infinity) ->
   "+Inf".
 
