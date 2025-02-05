@@ -1,15 +1,10 @@
-
-
 # Prometheus.io client for Erlang #
-
-Copyright (c) 2016,2017 Ilya Khaprov <<i.khaprov@gmail.com>>.
-
-__Version:__ 4.11.0
 
 [![Hex.pm](https://img.shields.io/hexpm/v/prometheus.svg?maxAge=2592000?style=plastic)](https://hex.pm/packages/prometheus)
 [![Hex.pm](https://img.shields.io/hexpm/dt/prometheus.svg?maxAge=2592000)](https://hex.pm/packages/prometheus)
-[![Build Status](https://img.shields.io/github/workflow/status/deadtrickster/prometheus.erl/CI?style=flat)](https://github.com/deadtrickster/prometheus.erl/actions/workflows/main.yml)
-[![Coverage Status](https://coveralls.io/repos/github/deadtrickster/prometheus.erl/badge.svg?branch=master)](https://coveralls.io/github/deadtrickster/prometheus.erl?branch=master)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/prometheus/)
+[![GitHub Actions](https://github.com/prometheus-erl/prometheus.erl/actions/workflows/main.yml/badge.svg)](https://github.com/prometheus-erl/prometheus.erl/actions/workflows/main.yml)
+[![Codecov](https://codecov.io/github/prometheus-erl/prometheus.erl/graph/badge.svg?token=G9HB5UKNIY)](https://codecov.io/github/prometheus-erl/prometheus.erl)
 
 [Prometheus.io](https://prometheus.io) monitoring system and time series database client in Erlang.
 
