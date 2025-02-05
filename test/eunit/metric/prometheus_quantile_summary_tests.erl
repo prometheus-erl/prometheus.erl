@@ -224,11 +224,16 @@ test_default_value(_) ->
                           {help, "Track orders count/total sum"}]),
   UndefinedValue = prometheus_quantile_summary:value(orders_summary, [electronics]),
 
+  [MF] = prometheus_collector:collect_mf_to_list(prometheus_quantile_summary),
+
+  #'MetricFamily'{metric = EmptyMetric} = MF,
+
   prometheus_quantile_summary:new([{name, something_summary},
                           {labels, []},
                           {help, ""}]),
   SomethingValue = prometheus_quantile_summary:value(something_summary),
   [?_assertEqual(undefined, UndefinedValue),
+   ?_assertMatch([], EmptyMetric),
    ?_assertMatch({0, 0, _}, SomethingValue)].
 
 test_values(_) ->
