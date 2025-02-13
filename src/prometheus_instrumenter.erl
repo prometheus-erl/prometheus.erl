@@ -19,7 +19,8 @@
 -spec enabled_instrumenters() -> [instrumenter()].
 enabled_instrumenters() ->
     case application:get_env(prometheus, instrumenters) of
-        undefined -> all_known_instrumenters();
+        undefined -> [];
+        {ok, all_loaded} -> all_known_instrumenters();
         {ok, Instrumenters} -> Instrumenters
     end.
 
