@@ -9,12 +9,21 @@
 
 -export([new/0, new/1, position/2, default/0]).
 
--ifdef(TEST).
 -export([exponential/3, linear/3]).
--endif.
 
 -type bucket_bound() :: number() | infinity.
 -type buckets() :: [bucket_bound(), ...].
+
+?DOC("""
+Histogram buckets configuration.
+
+Setting the `buckets` key of a histogram to
+- `default`: will use the default buckets
+- `linear`: will use `Start`, `Step`, and `Count` to generate the buckets as in `linear/3`
+- `exponential`: will use `Start`, `Factor`, and `Count` to generate the buckets as in `exponential/3`
+
+You can also specify your own buckets if desired instead.
+""").
 -type config() ::
     undefined
     | default
