@@ -1,6 +1,13 @@
 -module(prometheus_histogram).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 A Histogram tracks the size and number of events in buckets.
 You can use Histograms for aggregatable calculation of quantiles.
 
@@ -37,7 +44,7 @@ It accepts the extra integer argument \"Count\" to update the number of observat
 by adding that number. This allows for better accuracy in the case of irregular measurements,
 assuming that the \"Count\" conveys the observation time interval (for example,
 the number of time ticks when the recent value was observed).
-""".
+""").
 
 %%% metric
 -export([
@@ -94,7 +101,7 @@ the number of time ticks when the recent value was observed).
 %% {Key, NBounds, Sum, Bucket1, Bucket2, ...}
 %% NBounds is a list of bounds possibly converted to native units
 
--doc """
+?DOC("""
 Creates a histogram using `Spec`.
 
 Raises:
@@ -114,13 +121,13 @@ Raises:
 * `{no_buckets, Buckets}` error if `Buckets` are missing, not a list, empty list or not known buckets spec.
 * `{invalid_buckets, Buckets, Message}` error if `Buckets` aren't in increasing order.
 * `{invalid_bound, Bound}` error if `Bound` isn't a number.
-""".
+""").
 -spec new(prometheus_metric:spec()) -> ok.
 new(Spec) ->
     Spec1 = validate_histogram_spec(Spec),
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec1).
 
--doc """
+?DOC("""
 Creates a histogram using `Spec`. If a histogram with the same `Spec` exists returns `false`.
 
 Raises:
@@ -139,24 +146,24 @@ Raises:
 * `{no_buckets, Buckets}` error if `Buckets` are missing, not a list, empty list or not known buckets spec.
 * `{invalid_buckets, Buckets, Message}` error if `Buckets` aren't in increasing order.
 * `{invalid_bound, Bound}` error if `Bound` isn't a number.
-""".
+""").
 -spec declare(prometheus_metric:spec()) -> boolean().
 declare(Spec) ->
     Spec1 = validate_histogram_spec(Spec),
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec1).
 
--doc #{equiv => deregister(default, Name)}.
+?DOC(#{equiv => deregister(default, Name)}).
 -spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
--doc """
+?DOC("""
 Removes all histogram series with name `Name` and removes Metric Family from `Registry`.
 
 After this call new/1 for `Name` and `Registry` will succeed.
 
 Returns `{true, _}` if `Name` was a registered histogram. Otherwise returns `{false, _}`.
-""".
+""").
 -spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
     {boolean(), boolean()}.
 deregister(Registry, Name) ->
@@ -171,22 +178,22 @@ deregister(Registry, Name) ->
         _:_ -> {false, false}
     end.
 
--doc false.
+?DOC(false).
 -spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
 set_default(Registry, Name) ->
     insert_placeholders(Registry, Name, []).
 
--doc #{equiv => observe(default, Name, [], Value)}.
+?DOC(#{equiv => observe(default, Name, [], Value)}).
 -spec observe(prometheus_metric:name(), number()) -> ok.
 observe(Name, Value) ->
     observe(default, Name, [], Value).
 
--doc #{equiv => observe(default, Name, LabelValues, Value)}.
+?DOC(#{equiv => observe(default, Name, LabelValues, Value)}).
 -spec observe(prometheus_metric:name(), prometheus_metric:labels(), number()) -> ok.
 observe(Name, LabelValues, Value) ->
     observe(default, Name, LabelValues, Value).
 
--doc """
+?DOC("""
 Observes the given `Value`.
 
 Raises:
@@ -194,7 +201,7 @@ Raises:
 * `{invalid_value, Value, Message}` if `Value` isn't a number.
 * `{unknown_metric, Registry, Name}` error if histogram with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec observe(
     prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels(), number()
 ) -> ok.
@@ -203,17 +210,17 @@ observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
 observe(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "observe accepts only numbers"}).
 
--doc #{equiv => observe_n(default, Name, [], Value, Count)}.
+?DOC(#{equiv => observe_n(default, Name, [], Value, Count)}).
 -spec observe_n(prometheus_metric:name(), number(), integer()) -> ok.
 observe_n(Name, Value, Count) ->
     observe_n(default, Name, [], Value, Count).
 
--doc #{equiv => observe_n(default, Name, LabelValues, Value, Count)}.
+?DOC(#{equiv => observe_n(default, Name, LabelValues, Value, Count)}).
 -spec observe_n(prometheus_metric:name(), prometheus_metric:labels(), number(), integer()) -> ok.
 observe_n(Name, LabelValues, Value, Count) ->
     observe_n(default, Name, LabelValues, Value, Count).
 
--doc """
+?DOC("""
 Observes the given `Value`, `Count` times.
 
 Raises:
@@ -222,7 +229,7 @@ Raises:
 * `{invalid_count, Count, Message}` if `Count` isn't integer.
 * `{unknown_metric, Registry, Name}` error if histogram with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec observe_n(Registry, Name, LabelValues, Value, Count) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
@@ -259,7 +266,7 @@ observe_n(_Registry, _Name, _LabelValues, Value, Count) when is_number(Value) ->
 observe_n(_Registry, _Name, _LabelValues, Value, _Count) ->
     erlang:error({invalid_value, Value, "observe_n accepts only number values"}).
 
--doc false.
+?DOC(false).
 -spec pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
@@ -292,25 +299,25 @@ pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) when is_number(
 pobserve(_Registry, _Name, _LabelValues, _Buckets, _Pos, Value) ->
     erlang:error({invalid_value, Value, "pobserve accepts only numbers"}).
 
--doc #{equiv => observe_duration(default, Name, [], Fun)}.
+?DOC(#{equiv => observe_duration(default, Name, [], Fun)}).
 -spec observe_duration(prometheus_metric:name(), fun(() -> term())) -> term().
 observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
--doc #{equiv => observe_duration(default, Name, LabelValues, Fun)}.
+?DOC(#{equiv => observe_duration(default, Name, LabelValues, Fun)}).
 -spec observe_duration(prometheus_metric:name(), prometheus_metric:labels(), fun(() -> term())) ->
     term().
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
 
--doc """
+?DOC("""
 Tracks the amount of time spent executing `Fun`.
 
 Raises:
 * `{unknown_metric, Registry, Name}` error if histogram with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 * `{invalid_value, Value, Message}` if `Fun` isn't a function.
-""".
+""").
 -spec observe_duration(Registry, Name, LabelValues, Fun) -> any() when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
@@ -326,24 +333,24 @@ observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun, 0) ->
 observe_duration(_Regsitry, _Name, _LabelValues, Fun) ->
     erlang:error({invalid_value, Fun, "observe_duration accepts only functions"}).
 
--doc #{equiv => remove(default, Name, [])}.
+?DOC(#{equiv => remove(default, Name, [])}).
 -spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
--doc #{equiv => remove(default, Name, LabelValues)}.
+?DOC(#{equiv => remove(default, Name, LabelValues)}).
 -spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Removes histogram series identified by `Registry`, `Name` and `LabelValues`.
 
 Raises:
 
 * `{unknown_metric, Registry, Name}` error if histogram with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     boolean().
 remove(Registry, Name, LabelValues) ->
@@ -357,24 +364,24 @@ remove(Registry, Name, LabelValues) ->
         _ -> true
     end.
 
--doc #{equiv => reset(default, Name, [])}.
+?DOC(#{equiv => reset(default, Name, [])}).
 -spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
--doc #{equiv => reset(default, Name, LabelValues)}.
+?DOC(#{equiv => reset(default, Name, LabelValues)}).
 -spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Resets the value of the histogram identified by `Registry`, `Name` and `LabelValues`.
 
 Raises:
 
 * `{unknown_metric, Registry, Name}` error if histogram with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     boolean().
 reset(Registry, Name, LabelValues) ->
@@ -396,19 +403,19 @@ reset(Registry, Name, LabelValues) ->
         _ -> false
     end.
 
--doc #{equiv => value(default, Name, [])}.
+?DOC(#{equiv => value(default, Name, [])}).
 -spec value(prometheus_metric:name()) ->
     {number(), infinity | number()} | undefined.
 value(Name) ->
     value(default, Name, []).
 
--doc #{equiv => value(default, Name, LabelValues)}.
+?DOC(#{equiv => value(default, Name, LabelValues)}).
 -spec value(prometheus_metric:name(), prometheus_metric:labels()) ->
     {number(), infinity | number()} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Returns the value of the histogram identified by `Registry`, `Name` and `LabelValues`.
 If there is no histogram for `LabelValues`, returns `undefined`.
 
@@ -419,7 +426,7 @@ Raises:
 
 * `{unknown_metric, Registry, Name}` error if histogram named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     {number(), infinity | number()} | undefined.
 value(Registry, Name, LabelValues) ->
@@ -441,17 +448,17 @@ values(Registry, Name) ->
         MF -> mf_values(Registry, Name, MF)
     end.
 
--doc #{equiv => buckets(default, Name, [])}.
+?DOC(#{equiv => buckets(default, Name, [])}).
 -spec buckets(prometheus_metric:name()) -> [number()].
 buckets(Name) ->
     buckets(default, Name, []).
 
--doc #{equiv => buckets(default, Name, LabelValues)}.
+?DOC(#{equiv => buckets(default, Name, LabelValues)}).
 -spec buckets(prometheus_metric:name(), prometheus_metric:labels()) -> [number()].
 buckets(Name, LabelValues) ->
     buckets(default, Name, LabelValues).
 
--doc "Returns buckets of the histogram identified by `Registry`, `Name` and `LabelValues`.".
+?DOC("Returns buckets of the histogram identified by `Registry`, `Name` and `LabelValues`.").
 -spec buckets(Registry, Name, LabelValues) -> [number()] when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
@@ -464,7 +471,7 @@ buckets(Registry, Name, LabelValues) ->
 %% Collector API
 %%====================================================================
 
--doc false.
+?DOC(false).
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     [
@@ -474,7 +481,7 @@ deregister_cleanup(Registry) ->
     true = prometheus_metric:deregister_mf(?TABLE, Registry),
     ok.
 
--doc false.
+?DOC(false).
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
@@ -483,7 +490,7 @@ collect_mf(Registry, Callback) ->
     ],
     ok.
 
--doc false.
+?DOC(false).
 -spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry, DU, Bounds}) ->

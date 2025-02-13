@@ -1,6 +1,13 @@
 -module(prometheus_vm_msacc_collector).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 Collects microstate accounting metrics using
 [`erlang:statistics(microstate_accounting)`]
 (http://erlang.org/doc/man/erlang.html#statistics_microstate_accounting).
@@ -96,7 +103,7 @@ with `_seconds_total` as the suffix:
 
 By default all metrics are enabled as far as Prometheus is concerned,
 although some metrics could not be enabled by the VM itself.
-""".
+""").
 
 -export([deregister_cleanup/1, collect_mf/2]).
 
@@ -106,12 +113,12 @@ although some metrics could not be enabled by the VM itself.
 
 -define(METRIC_NAME_PREFIX, "erlang_vm_msacc_").
 
--doc false.
+?DOC(false).
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(_) ->
     ok.
 
--doc false.
+?DOC(false).
 -spec collect_mf(_Registry, Callback) -> ok when
     _Registry :: prometheus_registry:registry(),
     Callback :: prometheus_collector:collect_mf_callback().

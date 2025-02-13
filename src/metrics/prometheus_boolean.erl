@@ -1,6 +1,13 @@
 -module(prometheus_boolean).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 Boolean metric, to report booleans and flags.
 
 Boolean is a non-standard metric that uses untyped metric underneath.
@@ -26,7 +33,7 @@ fuse_event(Fuse, Event) ->
         _ -> ok
     end.
 ```
-""".
+""").
 
 %%% metric
 -export([
@@ -68,7 +75,7 @@ fuse_event(Fuse, Event) ->
 -define(TABLE, ?PROMETHEUS_BOOLEAN_TABLE).
 -define(BOOLEAN_POS, 2).
 
--doc """
+?DOC("""
 Creates a boolean using `Spec`.
 
 Raises:
@@ -79,12 +86,12 @@ Raises:
 * `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
 * `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
 * `{mf_already_exists, {Registry, Name}, Message}` error if a boolean with the same `Spec` already exists.
-""".
+""").
 -spec new(prometheus_metric:spec()) -> ok.
 new(Spec) ->
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec).
 
--doc """
+?DOC("""
 Creates a boolean using `Spec`.
 
 If a boolean with the same `Spec` exists returns `false`.
@@ -96,23 +103,23 @@ Raises:
 * `{invalid_metric_help, Help, Message}` error if metric `Help` is invalid.
 * `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
 * `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
-""".
+""").
 -spec declare(prometheus_metric:spec()) -> boolean().
 declare(Spec) ->
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec).
 
--doc #{equiv => deregister(default, Name)}.
+?DOC(#{equiv => deregister(default, Name)}).
 -spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
--doc """
+?DOC("""
 Removes all boolean series with name `Name` and removes Metric Family from `Registry`.
 
 After this call new/1 for `Name` and `Registry` will succeed.
 
 Returns `{true, _}` if `Name` was a registered boolean. Otherwise returns `{true, _}`.
-""".
+""").
 -spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
     {boolean(), boolean()}.
 deregister(Registry, Name) ->
@@ -120,23 +127,23 @@ deregister(Registry, Name) ->
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
--doc false.
+?DOC(false).
 -spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> ok.
 set_default(Registry, Name) ->
     set(Registry, Name, [], undefined).
 
--doc #{equiv => set(default, Name, [], Value)}.
+?DOC(#{equiv => set(default, Name, [], Value)}).
 -spec set(prometheus_metric:name(), prometheus:prometheus_boolean()) -> ok.
 set(Name, Value) ->
     set(default, Name, [], Value).
 
--doc #{equiv => set(default, Name, LabelValues, Value)}.
+?DOC(#{equiv => set(default, Name, LabelValues, Value)}).
 -spec set(prometheus_metric:name(), prometheus_metric:labels(), prometheus:prometheus_boolean()) ->
     ok.
 set(Name, LabelValues, Value) ->
     set(default, Name, LabelValues, Value).
 
--doc """
+?DOC("""
 Sets the boolean identified by `Registry`, `Name` and `LabelValues` to `Value`.
 
 Valid truthy values:
@@ -156,7 +163,7 @@ Raises:
 * `{invalid_value, Value, Message}` if `Value` isn't a boolean or `undefined`.
 * `{unknown_metric, Registry, Name}` error if boolean with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec set(Registry, Name, LabelValues, Value) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
@@ -166,17 +173,17 @@ set(Registry, Name, LabelValues, Value) ->
     Value1 = prometheus_model_helpers:boolean_value(Value),
     set_(Registry, Name, LabelValues, Value1).
 
--doc #{equiv => toggle(default, Name, [])}.
+?DOC(#{equiv => toggle(default, Name, [])}).
 -spec toggle(prometheus_metric:name()) -> ok.
 toggle(Name) ->
     toggle(default, Name, []).
 
--doc #{equiv => toggle(default, Name, LabelValues)}.
+?DOC(#{equiv => toggle(default, Name, LabelValues)}).
 -spec toggle(prometheus_metric:name(), prometheus_metric:labels()) -> ok.
 toggle(Name, LabelValues) ->
     toggle(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Toggles the boolean identified by `Registry`, `Name` and `LabelValues`.
 
 If boolean set to undefined, it can't be toggled.
@@ -186,7 +193,7 @@ Raises:
 * `{invalid_value, undefined, Message}` if boolean is undefined.
 * `{unknown_metric, Registry, Name}` error if boolean with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec toggle(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     ok.
 toggle(Registry, Name, LabelValues) ->
@@ -200,64 +207,64 @@ toggle(Registry, Name, LabelValues) ->
     end,
     ok.
 
--doc #{equiv => remove(default, Name, [])}.
+?DOC(#{equiv => remove(default, Name, [])}).
 -spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
--doc #{equiv => remove(default, Name, LabelValues)}.
+?DOC(#{equiv => remove(default, Name, LabelValues)}).
 -spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Removes boolean series identified by `Registry`, `Name` and `LabelValues`.
 
 Raises:
 
 * `{unknown_metric, Registry, Name}` error if boolean with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     boolean().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:remove_labels(?TABLE, Registry, Name, LabelValues).
 
--doc #{equiv => reset(default, Name, [])}.
+?DOC(#{equiv => reset(default, Name, [])}).
 -spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
--doc #{equiv => reset(default, Name, LabelValues)}.
+?DOC(#{equiv => reset(default, Name, LabelValues)}).
 -spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Resets the value of the boolean identified by `Registry`, `Name` and `LabelValues`.
 
 Raises:
 
 * `{unknown_metric, Registry, Name}` error if boolean with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     boolean().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     ets:update_element(?TABLE, {Registry, Name, LabelValues}, {?BOOLEAN_POS, 0}).
 
--doc #{equiv => value(default, Name, [])}.
+?DOC(#{equiv => value(default, Name, [])}).
 -spec value(prometheus_metric:name()) -> boolean() | undefined.
 value(Name) ->
     value(default, Name, []).
 
--doc #{equiv => value(default, Name, LabelValues)}.
+?DOC(#{equiv => value(default, Name, LabelValues)}).
 -spec value(prometheus_metric:name(), prometheus_metric:labels()) -> boolean() | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Returns the value of the boolean identified by `Registry`, `Name` and `LabelValues`.
 If there is no boolean for `LabelValues`, returns `undefined`.
 
@@ -265,7 +272,7 @@ Raises:
 
 * `{unknown_metric, Registry, Name}` error if boolean named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     boolean() | undefined.
 value(Registry, Name, LabelValues) ->
@@ -298,14 +305,14 @@ values(Registry, Name) ->
 %% Collector API
 %%====================================================================
 
--doc false.
+?DOC(false).
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     prometheus_metric:deregister_mf(?TABLE, Registry),
     true = ets:match_delete(?TABLE, {{Registry, '_', '_'}, '_'}),
     ok.
 
--doc false.
+?DOC(false).
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
@@ -314,7 +321,7 @@ collect_mf(Registry, Callback) ->
     ],
     ok.
 
--doc false.
+?DOC(false).
 -spec collect_metrics(prometheus_metric:name(), tuple()) -> [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry}) ->
     [

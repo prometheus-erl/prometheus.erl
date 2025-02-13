@@ -1,6 +1,13 @@
 -module(prometheus_time).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 Measuring time intervals with Prometheus.erl.
 Measuring time intervals is trivial - you just have to be sure you are using monotonic time source.
 Basically interval is a difference between start time and end time.
@@ -81,7 +88,7 @@ prometheus_histogram:dobserve(duration_seconds, 1.2),
 prometheus_histogram:value(duration_seconds).
 {[0,0,1],1.2}
 ```
-""".
+""").
 
 -export([
     duration_unit_from_string/1,

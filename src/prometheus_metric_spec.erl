@@ -1,6 +1,13 @@
 -module(prometheus_metric_spec).
--compile({parse_transform, prometheus_pt}).
--moduledoc false.
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC(false).
 
 -export([
     get_value/2,
@@ -23,35 +30,35 @@
 ]).
 -endif.
 
--doc false.
+?DOC(false).
 -spec registry(Spec :: prometheus_metric:spec()) -> prometheus_registry:registry().
 registry(Spec) ->
     get_value(registry, Spec, default).
 
--doc false.
+?DOC(false).
 -spec name(Spec :: prometheus_metric:spec()) -> prometheus_metric:name().
 name(Spec) ->
     Name = fetch_value(name, Spec),
     validate_metric_name(Name).
 
--doc false.
+?DOC(false).
 -spec labels(Spec :: prometheus_metric:spec()) -> prometheus_metric:labels().
 labels(Spec) ->
     Labels = get_value(labels, Spec, []),
     validate_metric_label_names(Labels).
 
--doc false.
+?DOC(false).
 -spec help(Spec :: prometheus_metric:spec()) -> prometheus_metric:help().
 help(Spec) ->
     Help = fetch_value(help, Spec),
     validate_metric_help(Help).
 
--doc false.
+?DOC(false).
 -spec data(Spec :: prometheus_metric:spec()) -> any().
 data(Spec) ->
     get_value(data, Spec).
 
--doc false.
+?DOC(false).
 -spec constant_labels(Spec :: prometheus_metric:spec()) -> [{atom(), term()}].
 constant_labels(Spec) ->
     case get_value(constant_labels, Spec, #{}) of
@@ -62,7 +69,7 @@ constant_labels(Spec) ->
             erlang:error({invalid_value, CL, "constant labels is not a map"})
     end.
 
--doc false.
+?DOC(false).
 -spec duration_unit(Spec :: prometheus_metric:spec()) -> prometheus_time:maybe_duration_unit().
 duration_unit(Spec) ->
     Name = to_string(name(Spec)),
@@ -85,7 +92,7 @@ duration_unit_from_spec(Spec) ->
     SDU = get_value(duration_unit, Spec, undefined),
     prometheus_time:validate_duration_unit(SDU).
 
--doc false.
+?DOC(false).
 -spec extract_common_params(Spec :: prometheus_metric:spec()) -> Return when
     Return :: {Registry, Name, Labels, Help, CallTimeout, DurationUnit, Data},
     Registry :: prometheus_registry:registry(),
@@ -105,18 +112,18 @@ extract_common_params(Spec) ->
     DurationUnit = duration_unit(Spec),
     {Registry, Name, Labels, Help, CallTimeout, DurationUnit, Data}.
 
--doc false.
--doc #{equiv => get_value(Key, Spec, undefined)}.
+?DOC(false).
+?DOC(#{equiv => get_value(Key, Spec, undefined)}).
 -spec get_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> any().
 get_value(Key, Spec) ->
     get_value(Key, Spec, undefined).
 
--doc false.
+?DOC(false).
 -spec get_value(Key :: atom(), Spec :: prometheus_metric:spec(), Default :: any()) -> any().
 get_value(Key, Spec, Default) ->
     proplists:get_value(Key, Spec, Default).
 
--doc false.
+?DOC(false).
 -spec fetch_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> any() | no_return().
 fetch_value(Key, Spec) ->
     case proplists:get_value(Key, Spec) of

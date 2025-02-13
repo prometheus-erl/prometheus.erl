@@ -1,23 +1,29 @@
 -module(prometheus_format).
--compile({parse_transform, prometheus_pt}).
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
 
--moduledoc """
+?MODULEDOC("""
 Module that implements this behaviour can be used as `foramt` parameter for exporters.
 
 Built-in formats:
 - `m:prometheus_text_format`
 - `m:prometheus_protobuf_format`
-""".
+""").
 
 %%====================================================================
 %% Callbacks
 %%====================================================================
 
--doc "Should return content type of the format.".
+?DOC("Should return content type of the format.").
 -callback content_type() -> binary().
 
--doc "Should format `default` registry.".
+?DOC("Should format `default` registry.").
 -callback format() -> binary().
 
--doc "Should format `Registry`.".
+?DOC("Should format `Registry`.").
 -callback format(Registry :: prometheus_registry:registry()) -> binary().

@@ -1,14 +1,21 @@
 -module(prometheus_protobuf_format).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 Serializes Prometheus registry using [protocol buffer format](http://bit.ly/2cxSuJP).
-""".
+""").
 
 -export([content_type/0, format/0, format/1]).
 
 -behaviour(prometheus_format).
 
--doc "Returns content type of the protocol buffer format.".
+?DOC("Returns content type of the protocol buffer format.").
 -spec content_type() -> binary().
 content_type() ->
     <<
@@ -17,13 +24,13 @@ content_type() ->
         "encoding=delimited"
     >>.
 
--doc #{equiv => format(default)}.
--doc "Formats `default` registry using protocol buffer format.".
+?DOC(#{equiv => format(default)}).
+?DOC("Formats `default` registry using protocol buffer format.").
 -spec format() -> binary().
 format() ->
     format(default).
 
--doc "Formats `Registry` using protocol buffer format.".
+?DOC("Formats `Registry` using protocol buffer format.").
 -spec format(Registry :: prometheus_registry:registry()) -> binary().
 format(Registry) ->
     {ok, Fd} = ram_file:open("", [write, read, binary]),

@@ -1,5 +1,11 @@
 -module(prometheus_buckets).
--compile({parse_transform, prometheus_pt}).
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
 
 -export([new/0, new/1, position/2, default/0]).
 
@@ -18,12 +24,12 @@
 
 -export_type([bucket_bound/0, buckets/0, config/0]).
 
--doc "Histogram buckets constructor, returns `default/0` plus `infinity`".
+?DOC("Histogram buckets constructor, returns `default/0` plus `infinity`").
 -spec new() -> buckets().
 new() ->
     default() ++ [infinity].
 
--doc "Histogram buckets constructor".
+?DOC("Histogram buckets constructor").
 -spec new(config()) -> buckets().
 new([]) ->
     erlang:error({no_buckets, []});
@@ -56,7 +62,7 @@ validate_bound(infinity) ->
 validate_bound(Bound) ->
     erlang:error({invalid_bound, Bound}).
 
--doc """
+?DOC("""
 Default histogram buckets.
 
 ```erlang
@@ -67,11 +73,11 @@ Default histogram buckets.
 
 Please note these buckets are floats and represent seconds so you'll have to use
 `prometheus_histogramdobserve/3` or configure `duration_unit` as `seconds`.
-""".
+""").
 -spec default() -> buckets().
 default() -> [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10].
 
--doc """
+?DOC("""
 Creates `Count` buckets, where the lowest bucket has an upper bound of `Start` and each following
 bucket's upper bound is `Factor` times the previous bucket's upper bound.
 The returned list is meant to be used for the `buckets` key of histogram constructors options.
@@ -83,7 +89,7 @@ The returned list is meant to be used for the `buckets` key of histogram constru
 
 The function raises `{invalid_value, Value, Message}` error if `Count` isn't positive,
 if `Start` isn't positive, or if `Factor` is less than or equals to 1.
-""".
+""").
 -spec exponential(number(), number(), pos_integer()) -> buckets().
 exponential(_Start, _Factor, Count) when Count < 1 ->
     erlang:error({invalid_value, Count, "Buckets count should be positive"});
@@ -97,7 +103,7 @@ exponential(Start, Factor, Count) ->
      || I <- lists:seq(0, Count - 1)
     ].
 
--doc """
+?DOC("""
 Creates `Count` buckets, each `Width` wide, where the lowest bucket has an upper bound of `Start`.
 
 The returned list is meant to be used for the `buckets` key of histogram constructors options.
@@ -108,7 +114,7 @@ The returned list is meant to be used for the `buckets` key of histogram constru
 ```
 
 The function raises `{invalid_value, Value, Message}` error if `Count` is zero or negative.
-""".
+""").
 -spec linear(number(), number(), pos_integer()) -> buckets().
 linear(_Start, _Step, Count) when Count < 1 ->
     erlang:error({invalid_value, Count, "Buckets count should be positive"});

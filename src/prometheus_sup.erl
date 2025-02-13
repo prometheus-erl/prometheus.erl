@@ -1,6 +1,11 @@
 -module(prometheus_sup).
--compile({parse_transform, prometheus_pt}).
--moduledoc false.
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC(false).
 
 -export([start_link/0]).
 -export([init/1]).
