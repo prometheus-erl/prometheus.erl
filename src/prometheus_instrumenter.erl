@@ -1,5 +1,11 @@
 -module(prometheus_instrumenter).
--compile({parse_transform, prometheus_pt}).
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
 
 -export([enabled_instrumenters/0, setup/1]).
 
@@ -9,7 +15,7 @@
 
 -callback setup_instrumenter() -> ok.
 
--doc false.
+?DOC(false).
 -spec enabled_instrumenters() -> [instrumenter()].
 enabled_instrumenters() ->
     case application:get_env(prometheus, instrumenters) of
@@ -17,10 +23,8 @@ enabled_instrumenters() ->
         {ok, Instrumenters} -> Instrumenters
     end.
 
--doc false.
--spec setup(Instrumenter) -> Result when
-    Instrumenter :: instrumenter(),
-    Result :: ok.
+?DOC(false).
+-spec setup(Instrumenter :: instrumenter()) -> ok.
 setup(Instrumenter) ->
     ok = Instrumenter:setup_instrumenter().
 

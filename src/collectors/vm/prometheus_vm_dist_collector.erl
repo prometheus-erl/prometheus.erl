@@ -1,6 +1,13 @@
 -module(prometheus_vm_dist_collector).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 Collects information about the sockets and processes involved in the Erlang distribution mechanism.
 
 All metrics include a label 'peer' that indicates which distributed connection the metric is about.
@@ -129,7 +136,7 @@ Available options:
 * `node_queue_size_bytes` for `erlang_vm_dist_node_queue_size_bytes`.
 
 By default all metrics are enabled.
-""".
+""").
 
 -export([deregister_cleanup/1, collect_mf/2]).
 
@@ -141,12 +148,12 @@ By default all metrics are enabled.
 
 -define(METRIC_NAME_PREFIX, "erlang_vm_dist_").
 
--doc false.
+?DOC(false).
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(_) ->
     ok.
 
--doc false.
+?DOC(false).
 -spec collect_mf(_Registry, Callback) -> ok when
     _Registry :: prometheus_registry:registry(),
     Callback :: prometheus_collector:collect_mf_callback().

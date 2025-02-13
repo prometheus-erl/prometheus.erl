@@ -1,5 +1,11 @@
 -module(prometheus).
--compile({parse_transform, prometheus_pt}).
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
 
 -behaviour(application).
 
@@ -60,12 +66,12 @@ start(_StartType, _StartArgs) ->
 stop(_State) ->
     ok.
 
--doc false.
+?DOC(false).
 -spec start() -> ok | {error, term()}.
 start() ->
     application:start(?MODULE).
 
--doc false.
+?DOC(false).
 -spec stop() -> ok | {error, term()}.
 stop() ->
     application:stop(?MODULE).

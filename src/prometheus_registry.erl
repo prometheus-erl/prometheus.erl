@@ -1,6 +1,13 @@
 -module(prometheus_registry).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 A registry of Collectors.
 
 The majority of users should use the `default`, rather than their own.
@@ -8,7 +15,7 @@ The majority of users should use the `default`, rather than their own.
 Creating a registry other than the default is primarily useful for unit tests,
 or pushing a subset of metrics to the [Pushgateway](https://github.com/prometheus/pushgateway)
 from batch jobs.
-""".
+""").
 
 -export([
     collect/2,
@@ -40,7 +47,7 @@ from batch jobs.
 
 -define(TABLE, ?PROMETHEUS_REGISTRY_TABLE).
 
--doc """
+?DOC("""
 Tries to find registry with the `Name`.
 
 Assumes that registry name is always an atom.
@@ -48,7 +55,7 @@ Assumes that registry name is always an atom.
 - If `Name` is an iolist performs safe search (to avoid interning atoms) and returns atom or false.
 
 This operation is O(n).
-""".
+""").
 -spec exists(Name) -> Result when
     Name :: atom() | iolist(),
     Result :: boolean() | atom().
@@ -69,7 +76,7 @@ exists(Name) when is_list(Name) orelse is_binary(Name) ->
             false
     end.
 
--doc "Calls `Callback` for each collector with two arguments: `Registry` and `Collector`.".
+?DOC("Calls `Callback` for each collector with two arguments: `Registry` and `Collector`.").
 -spec collect(Registry, Callback) -> ok when
     Registry :: prometheus_registry:registry(),
     Callback :: collect_callback().
@@ -80,18 +87,18 @@ collect(Registry, Callback) ->
     ],
     ok.
 
--doc "Returns collectors registered in `Registry`.".
+?DOC("Returns collectors registered in `Registry`.").
 -spec collectors(Registry :: prometheus_registry:registry()) ->
     [Collector :: prometheus_collector:collector()].
 collectors(Registry) ->
     [Collector || {_, Collector} <- ets:lookup(?TABLE, Registry)].
 
--doc #{equiv => register_collector(default, Collector)}.
+?DOC(#{equiv => register_collector(default, Collector)}).
 -spec register_collector(Collector :: prometheus_collector:collector()) -> ok.
 register_collector(Collector) ->
     register_collector(default, Collector).
 
--doc "Register a collector.".
+?DOC("Register a collector.").
 -spec register_collector(Registry, Collector) -> ok when
     Registry :: prometheus_registry:registry(),
     Collector :: prometheus_collector:collector().
@@ -101,11 +108,11 @@ register_collector(Registry, Collector) ->
 
 -spec register_collectors(Collectors :: [prometheus_collector:collector()]) ->
     ok.
--doc #{equiv => register_collectors(default, Collectors)}.
+?DOC(#{equiv => register_collectors(default, Collectors)}).
 register_collectors(Collectors) ->
     register_collectors(default, Collectors).
 
--doc "Registers collectors list.".
+?DOC("Registers collectors list.").
 -spec register_collectors(Registry, Collectors) -> ok when
     Registry :: prometheus_registry:registry(),
     Collectors :: [prometheus_collector:collector()].
@@ -113,12 +120,12 @@ register_collectors(Registry, Collectors) ->
     [register_collector(Registry, Collector) || Collector <- Collectors],
     ok.
 
--doc #{equiv => deregister_collector(default, Collector)}.
+?DOC(#{equiv => deregister_collector(default, Collector)}).
 -spec deregister_collector(Collector :: prometheus_collector:collector()) -> ok.
 deregister_collector(Collector) ->
     deregister_collector(default, Collector).
 
--doc "Unregisters a collector.".
+?DOC("Unregisters a collector.").
 -spec deregister_collector(Registry, Collector) -> ok when
     Registry :: prometheus_registry:registry(),
     Collector :: prometheus_collector:collector().
@@ -127,12 +134,12 @@ deregister_collector(Registry, Collector) ->
     Collector:deregister_cleanup(Registry),
     ok.
 
--doc #{equiv => clear(default)}.
+?DOC(#{equiv => clear(default)}).
 -spec clear() -> ok.
 clear() ->
     clear(default).
 
--doc "Unregisters all collectors.".
+?DOC("Unregisters all collectors.").
 -spec clear(Registry :: prometheus_registry:registry()) -> ok.
 clear(Registry) ->
     [
@@ -141,13 +148,13 @@ clear(Registry) ->
     ],
     ok.
 
--doc #{equiv => collector_registeredp(default, Collector)}.
+?DOC(#{equiv => collector_registeredp(default, Collector)}).
 -spec collector_registeredp(Collector) -> boolean() when
     Collector :: prometheus_collector:collector().
 collector_registeredp(Collector) ->
     collector_registeredp(default, Collector).
 
--doc "Checks whether `Collector` is registered.".
+?DOC("Checks whether `Collector` is registered.").
 -spec collector_registeredp(Registry, Collector) -> boolean() when
     Registry :: prometheus_registry:registry(),
     Collector :: prometheus_collector:collector().

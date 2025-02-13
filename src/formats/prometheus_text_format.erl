@@ -1,6 +1,13 @@
 -module(prometheus_text_format).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 Serializes Prometheus registry using the latest [text format](http://bit.ly/2cxSuJP).
 
 Example output:
@@ -17,7 +24,7 @@ http_request_duration_milliseconds_bucket{method=\"post\",le=\"+Inf\"} 6
 http_request_duration_milliseconds_count{method=\"post\"} 6
 http_request_duration_milliseconds_sum{method=\"post\"} 4350
 ```
-""".
+""").
 
 -export([content_type/0, format/0, format/1, render_labels/1, escape_label_value/1]).
 
@@ -30,24 +37,24 @@ http_request_duration_milliseconds_sum{method=\"post\"} 4350
 -behaviour(prometheus_format).
 -compile({inline, [add_brackets/1, render_label_pair/1]}).
 
--doc """
+?DOC("""
 Returns content type of the latest \[text format](http://bit.ly/2cxSuJP).
-""".
+""").
 -spec content_type() -> binary().
 content_type() ->
     <<"text/plain; version=0.0.4">>.
 
--doc #{equiv => format(default)}.
--doc """
+?DOC(#{equiv => format(default)}).
+?DOC("""
 Equivalent to [format(default)](`format/1`).
 
 Formats `default` registry using the latest text format.
-""".
+""").
 -spec format() -> binary().
 format() ->
     format(default).
 
--doc "Formats `Registry` using the latest text format.".
+?DOC("Formats `Registry` using the latest text format.").
 -spec format(Registry :: prometheus_registry:registry()) -> binary().
 format(Registry) ->
     {ok, Fd} = ram_file:open("", [write, read, binary]),
@@ -61,9 +68,9 @@ format(Registry) ->
     ok = file:close(Fd),
     Str.
 
--doc """
+?DOC("""
 Escapes the backslash (\\), double-quote (\"), and line feed (\\n) characters
-""".
+""").
 -spec escape_label_value(binary() | iolist()) -> binary().
 escape_label_value(LValue) when is_binary(LValue) ->
     case has_special_char(LValue) of
@@ -84,7 +91,7 @@ registry_collect_callback(Fd, Registry, Collector) ->
     end,
     prometheus_collector:collect_mf(Registry, Collector, Callback).
 
--doc false.
+?DOC(false).
 -spec emit_mf_prologue(Fd :: file:fd(), prometheus_model:'MetricFamily'()) -> ok.
 emit_mf_prologue(Fd, #'MetricFamily'{name = Name, help = Help, type = Type}) ->
     Bytes = [
@@ -100,7 +107,7 @@ emit_mf_prologue(Fd, #'MetricFamily'{name = Name, help = Help, type = Type}) ->
     ],
     file:write(Fd, Bytes).
 
--doc false.
+?DOC(false).
 -spec emit_mf_metrics(file:fd(), prometheus_model:'MetricFamily'()) -> ok | {error, term()}.
 emit_mf_metrics(Fd, #'MetricFamily'{name = Name, metric = Metrics}) ->
     %% file:write/2 is an expensive operation, as it goes through a port driver.
@@ -250,12 +257,12 @@ render_series(Name, LString, Value) ->
         "\n"
     >>.
 
--doc false.
+?DOC(false).
 -spec escape_metric_help(iodata()) -> binary().
 escape_metric_help(Help) ->
     escape_string(fun escape_help_char/1, Help).
 
--doc false.
+?DOC(false).
 escape_help_char($\\ = X) ->
     <<X, X>>;
 escape_help_char($\n) ->
@@ -270,7 +277,7 @@ bound_to_label_value(Bound) when is_float(Bound) ->
 bound_to_label_value(infinity) ->
     "+Inf".
 
--doc false.
+?DOC(false).
 escape_label_char($\\ = X) ->
     <<X, X>>;
 escape_label_char($\n) ->
@@ -280,7 +287,7 @@ escape_label_char($" = X) ->
 escape_label_char(X) ->
     <<X>>.
 
--doc false.
+?DOC(false).
 -spec has_special_char(binary()) -> boolean().
 has_special_char(<<C:8, _/bitstring>>) when C =:= $\\; C =:= $\n; C =:= $" ->
     true;
@@ -289,7 +296,7 @@ has_special_char(<<_:8, Rest/bitstring>>) ->
 has_special_char(<<>>) ->
     false.
 
--doc false.
+?DOC(false).
 escape_string(Fun, Str) when is_binary(Str) ->
     <<<<(Fun(X))/binary>> || <<X:8>> <= Str>>;
 escape_string(Fun, Str) ->

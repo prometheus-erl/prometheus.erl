@@ -1,7 +1,13 @@
 -module(prometheus_collector).
--compile({parse_transform, prometheus_pt}).
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
 
--moduledoc """
+?MODULEDOC("""
 A collector for a set of metrics.
 
 Normal users should use `m:prometheus_gauge`, `m:prometheus_counter`,
@@ -52,7 +58,7 @@ create_gauge(Name, Help, Data) ->
     prometheus_model_helpers:create_mf(Name, Help, gauge, ?MODULE, Data).
 
 ```
-""".
+""").
 
 -export([enabled_collectors/0, collect_mf/3]).
 
@@ -81,26 +87,33 @@ create_gauge(Name, Help, Data) ->
 
 -include("prometheus_model.hrl").
 
+?DOC("Represents a Prometheus collector").
 -type collector() :: atom().
+
+?DOC("Data associated with a collector").
 -type data() :: any().
+
+?DOC("Callback for `collect_mf/3`").
 -type collect_mf_callback() :: fun((prometheus_model:'MetricFamily'()) -> any()).
 
--doc "Should call `Callback` for each `MetricFamily` of this collector".
+?DOC("Should call `Callback` for each `MetricFamily` of this collector").
 -callback collect_mf(Registry, Callback) -> ok when
     Registry :: prometheus_registry:registry(),
     Callback :: collect_mf_callback().
 
--doc """
+?DOC("""
 Should return Metric list for each MetricFamily identified by `Name`.
 
 `Data` is a term associated with MetricFamily by `c:collect_mf/2`.
-""".
+""").
 -callback collect_metrics(Name, Data) -> Metrics when
     Name :: prometheus_metric:name(),
     Data :: data(),
     Metrics :: prometheus_model:'Metric'() | [prometheus_model:'Metric'()].
 
--doc "Called when collector is deregistered. If collector is stateful you can put cleanup code here".
+?DOC("""
+Called when collector is deregistered. If collector is stateful you can put cleanup code here
+""").
 -callback deregister_cleanup(Registry) -> ok when
     Registry :: prometheus_registry:registry().
 
@@ -110,7 +123,7 @@ Should return Metric list for each MetricFamily identified by `Name`.
 %% Public API
 %%====================================================================
 
--doc false.
+?DOC(false).
 -spec enabled_collectors() -> [collector()].
 enabled_collectors() ->
     lists:usort(
@@ -147,7 +160,7 @@ global_labels_callback_wrapper(GlobalLabels0, Callback) ->
         Callback(MF#'MetricFamily'{metric = Metrics})
     end.
 
--doc "Calls `Callback` for each MetricFamily of this collector.".
+?DOC("Calls `Callback` for each MetricFamily of this collector.").
 -spec collect_mf(Registry, Collector, Callback) -> ok when
     Registry :: prometheus_registry:registry(),
     Collector :: collector(),
@@ -162,7 +175,7 @@ collect_mf(Registry, Collector, Callback0) ->
     ok = Collector:collect_mf(Registry, Callback).
 
 -ifdef(TEST).
--doc false.
+?DOC(false).
 -spec collect_mf_to_list(collector()) -> [prometheus_model:'MetricFamily'()].
 collect_mf_to_list(Collector) ->
     collect_mf_to_list(default, Collector).
@@ -190,12 +203,14 @@ get_list(Key) ->
     end.
 -endif.
 
+-spec all_known_collectors() -> [collector()].
 all_known_collectors() ->
     lists:umerge(
         prometheus_misc:behaviour_modules(prometheus_collector),
         ?DEFAULT_COLLECTORS
     ).
 
+-spec catch_default_collectors([collector()]) -> [collector()].
 catch_default_collectors(Collectors) ->
     maybe_replace_default(Collectors, []).
 

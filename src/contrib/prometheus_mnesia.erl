@@ -1,19 +1,26 @@
 -module(prometheus_mnesia).
--compile({parse_transform, prometheus_pt}).
--moduledoc "Mnesia instrumentation helpers.".
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("Mnesia instrumentation helpers.").
 
 -export([table_disk_size/1, table_disk_size/2, tm_info/0]).
 
 -define(EXTS, [".DAT", ".TMP", ".DMP", ".DCD", ".DCL", ".LOGTMP"]).
 
--doc #{equiv => table_disk_size(mnesia:system_info(directory), Table)}.
+?DOC(#{equiv => table_disk_size(mnesia:system_info(directory), Table)}).
 -spec table_disk_size(Table) -> Size when
     Table :: file:name_all(),
     Size :: non_neg_integer().
 table_disk_size(Table) ->
     table_disk_size(mnesia:system_info(directory), Table).
 
--doc """
+?DOC("""
 Returns sum of all mnesia files for the given `Table` in bytes.
 Mnesia can create different files for each table:
 - .DAT: DETS files
@@ -26,7 +33,7 @@ Mnesia can create different files for each table:
 More on Mnesia files can be found in
 [Mnesia System Information chapter](http://erlang.org/doc/apps/mnesia/Mnesia_chap7.html)
 of Mnesia User's Guide.
-""".
+""").
 -spec table_disk_size(Dir, Table) -> Size when
     Dir :: file:name_all(),
     Table :: file:name_all(),
@@ -41,12 +48,12 @@ table_disk_size(Dir, Table) ->
         )
     ).
 
--doc """
+?DOC("""
 Returns `{PCount, CCount}` tuple, where `PCount` is a number of participant transactions
 and `CCount` is a number of coordinator transactions.
 
 Can return `{undefined, undefined}` occasionally.
-""".
+""").
 -spec tm_info() -> {Ps, Cs} | {undefined, undefined} when
     Ps :: non_neg_integer(),
     Cs :: non_neg_integer().

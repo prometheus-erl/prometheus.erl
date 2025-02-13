@@ -7,12 +7,18 @@
 %%
 %% Copyright (c) 2007-2021 VMware, Inc. or its affiliates.  All rights reserved.
 -module(prometheus_misc).
--compile({parse_transform, prometheus_pt}).
--moduledoc false.
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC(false).
 
 -export([behaviour_modules/1]).
 
--spec behaviour_modules(Behaviour :: atom()) -> [atom()] | [].
+%% Retrieves a list of modules that implement a specified behaviour.
+-spec behaviour_modules(Behaviour :: atom()) -> [module()].
 behaviour_modules(Behaviour) ->
     [
         Module

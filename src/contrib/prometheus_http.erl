@@ -1,6 +1,13 @@
 -module(prometheus_http).
--compile({parse_transform, prometheus_pt}).
--moduledoc "HTTP instrumentation helpers".
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("HTTP instrumentation helpers").
 
 -export([microseconds_duration_buckets/0, status_class/1]).
 
@@ -9,7 +16,7 @@
 -type status_code() :: pos_integer().
 -type status_class() :: prometheus:label_value().
 
--doc """
+?DOC("""
 Returns default microseconds buckets for measuring http requests duration.
 
 ```erlang
@@ -18,7 +25,7 @@ Returns default microseconds buckets for measuring http requests duration.
  1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000,
  1000000, 2500000, 5000000, 10000000]
 ```
-""".
+""").
 -spec microseconds_duration_buckets() -> prometheus_buckets:buckets().
 microseconds_duration_buckets() ->
     [
@@ -43,7 +50,7 @@ microseconds_duration_buckets() ->
         10000000
     ].
 
--doc """
+?DOC("""
 Returns status class for the http status code `SCode`.
 
 ```erlang
@@ -53,7 +60,7 @@ Returns status class for the http status code `SCode`.
 ```
 
 Raises `{invalid_value_error, SCode, Message}` error if `SCode` isn't a positive integer.
-""".
+""").
 -spec status_class(SCode) -> StatusClass when
     SCode :: status_code(),
     StatusClass :: status_class().

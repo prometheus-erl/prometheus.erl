@@ -1,6 +1,13 @@
 -module(prometheus_vm_system_info_collector).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 Collects Erlang VM metrics using `erlang:system_info/1`.
 
 ### Exported metrics
@@ -97,7 +104,7 @@ Options are the same as Item parameter values for `erlang:system_info/1`:
 * `allocators` for `erlang_vm_allocators`.
 
 By default all metrics are enabled.
-""".
+""").
 
 -export([
     deregister_cleanup/1,
@@ -110,12 +117,12 @@ By default all metrics are enabled.
 
 -define(METRIC_NAME_PREFIX, "erlang_vm_").
 
--doc false.
+?DOC(false).
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(_) ->
     ok.
 
--doc false.
+?DOC(false).
 -spec collect_mf(_Registry, Callback) -> ok when
     _Registry :: prometheus_registry:registry(),
     Callback :: prometheus_collector:collect_mf_callback().

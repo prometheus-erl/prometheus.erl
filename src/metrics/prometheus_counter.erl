@@ -1,6 +1,13 @@
 -module(prometheus_counter).
--compile({parse_transform, prometheus_pt}).
--moduledoc """
+-if(?OTP_RELEASE >= 27).
+-define(MODULEDOC(Str), -moduledoc(Str)).
+-define(DOC(Str), -doc(Str)).
+-else.
+-define(MODULEDOC(Str), -compile([])).
+-define(DOC(Str), -compile([])).
+-endif.
+
+?MODULEDOC("""
 Counter is a Metric that represents a single numerical value that only ever goes up.
 That implies that it cannot be used to count items whose number can also go down, e. g.
 the number of currently running processes. Those \"counters\" are represented by `m:prometheus_gauge`.
@@ -43,7 +50,7 @@ setup() ->
 inc(Caller) ->
     prometheus_counter:inc(my_service_requests_total, [Caller]).
 ```
-""".
+""").
 
 %%% metric
 -export([
@@ -85,7 +92,7 @@ inc(Caller) ->
 -define(FSUM_POS, 3).
 -define(WIDTH, 16).
 
--doc """
+?DOC("""
 Creates a counter using `Spec`.
 
 Raises:
@@ -96,12 +103,12 @@ Raises:
 * `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
 * `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
 * `{mf_already_exists, {Registry, Name}, Message}` error if a counter with the same `Spec` already exists.
-""".
+""").
 -spec new(prometheus_metric:spec()) -> ok.
 new(Spec) ->
     prometheus_metric:insert_new_mf(?TABLE, ?MODULE, Spec).
 
--doc """
+?DOC("""
 Creates a counter using `Spec`, if a counter with the same `Spec` exists returns `false`.
 
 Raises:
@@ -111,23 +118,23 @@ Raises:
 * `{invalid_metric_help, Help, Message}` error if metric `Help` is invalid.
 * `{invalid_metric_labels, Labels, Message}` error if `Labels` isn't a list.
 * `{invalid_label_name, Name, Message}` error if `Name` isn't a valid label name.
-""".
+""").
 -spec declare(prometheus_metric:spec()) -> boolean().
 declare(Spec) ->
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec).
 
--doc #{equiv => deregister(default, Name)}.
+?DOC(#{equiv => deregister(default, Name)}).
 -spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
     deregister(default, Name).
 
--doc """
+?DOC("""
 Removes all counter series with name `Name` and removes Metric Family from `Registry`.
 
 After this call new/1 for `Name` and `Registry` will succeed.
 
 Returns `{true, _}` if `Name` was a registered counter. Otherwise returns `{true, _}`.
-""".
+""").
 -spec deregister(prometheus_registry:registry(), prometheus_metric:name()) ->
     {boolean(), boolean()}.
 deregister(Registry, Name) ->
@@ -135,32 +142,32 @@ deregister(Registry, Name) ->
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
--doc false.
+?DOC(false).
 -spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
 set_default(Registry, Name) ->
     ets:insert_new(?TABLE, {key(Registry, Name, []), 0, 0}).
 
--doc #{equiv => inc(default, Name, [], 1)}.
+?DOC(#{equiv => inc(default, Name, [], 1)}).
 -spec inc(prometheus_metric:name()) -> ok.
 inc(Name) ->
     inc(default, Name, [], 1).
 
--doc """
+?DOC("""
 If the second argument is a list, equivalent to [inc(default, Name, LabelValues,
 1)](`inc/4`) otherwise equivalent to [inc(default, Name, [], Value)](`inc/4`).
-""".
+""").
 -spec inc(prometheus_metric:name(), prometheus_metric:labels() | non_neg_integer()) -> ok.
 inc(Name, LabelValues) when is_list(LabelValues) ->
     inc(default, Name, LabelValues, 1);
 inc(Name, Value) ->
     inc(default, Name, [], Value).
 
--doc #{equiv => inc(default, Name, LabelValues, Value)}.
+?DOC(#{equiv => inc(default, Name, LabelValues, Value)}).
 -spec inc(prometheus_metric:name(), prometheus_metric:labels(), non_neg_integer()) -> ok.
 inc(Name, LabelValues, Value) ->
     inc(default, Name, LabelValues, Value).
 
--doc """
+?DOC("""
 Increments the counter identified by `Registry`, `Name` and `LabelValues` by `Value`.
 
 Raises:
@@ -168,7 +175,7 @@ Raises:
 * `{invalid_value, Value, Message}` if `Value` isn't a positive number.
 * `{unknown_metric, Registry, Name}` error if counter with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec inc(Registry, Name, LabelValues, Value) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
@@ -196,26 +203,26 @@ inc(Registry, Name, LabelValues, Value) when is_number(Value), Value >= 0 ->
 inc(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "inc accepts only non-negative numbers"}).
 
--doc #{equiv => remove(default, Name, [])}.
--doc "Equivalent to [remove(default, Name, [])](`remove/3`).".
+?DOC(#{equiv => remove(default, Name, [])}).
+?DOC("Equivalent to [remove(default, Name, [])](`remove/3`).").
 -spec remove(prometheus_metric:name()) -> boolean().
 remove(Name) ->
     remove(default, Name, []).
 
--doc #{equiv => remove(default, Name, LabelValues)}.
--doc "Equivalent to [remove(default, Name, LabelValues)](`remove/3`).".
+?DOC(#{equiv => remove(default, Name, LabelValues)}).
+?DOC("Equivalent to [remove(default, Name, LabelValues)](`remove/3`).").
 -spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Removes counter series identified by `Registry`, `Name` and `LabelValues`.
 
 Raises:
 
 * `{unknown_metric, Registry, Name}` error if counter with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     boolean().
 remove(Registry, Name, LabelValues) ->
@@ -229,24 +236,24 @@ remove(Registry, Name, LabelValues) ->
         _ -> true
     end.
 
--doc #{equiv => reset(default, Name, [])}.
+?DOC(#{equiv => reset(default, Name, [])}).
 -spec reset(prometheus_metric:name()) -> boolean().
 reset(Name) ->
     reset(default, Name, []).
 
--doc #{equiv => reset(default, Name, LabelValues)}.
+?DOC(#{equiv => reset(default, Name, LabelValues)}).
 -spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Resets the value of the counter identified by `Registry`, `Name` and `LabelValues`.
 
 Raises:
 
 * `{unknown_metric, Registry, Name}` error if counter with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     boolean().
 reset(Registry, Name, LabelValues) ->
@@ -262,17 +269,17 @@ reset(Registry, Name, LabelValues) ->
         _ -> false
     end.
 
--doc #{equiv => value(default, Name, [])}.
+?DOC(#{equiv => value(default, Name, [])}).
 -spec value(prometheus_metric:name()) -> number() | undefined.
 value(Name) ->
     value(default, Name, []).
 
--doc #{equiv => value(default, Name, LabelValues)}.
+?DOC(#{equiv => value(default, Name, LabelValues)}).
 -spec value(prometheus_metric:name(), prometheus_metric:labels()) -> number() | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
--doc """
+?DOC("""
 Returns the value of the counter identified by `Registry`, `Name` and `LabelValues`.
 
 If there is no counter for `LabelValues`, returns `undefined`.
@@ -280,7 +287,7 @@ If there is no counter for `LabelValues`, returns `undefined`.
 Raises:
 * `{unknown_metric, Registry, Name}` error if counter named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
-""".
+""").
 -spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
     number() | undefined.
 value(Registry, Name, LabelValues) ->
@@ -308,14 +315,14 @@ values(Registry, Name) ->
 %% Collector API
 %%====================================================================
 
--doc false.
+?DOC(false).
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     prometheus_metric:deregister_mf(?TABLE, Registry),
     true = ets:match_delete(?TABLE, {{Registry, '_', '_', '_'}, '_', '_'}),
     ok.
 
--doc false.
+?DOC(false).
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
@@ -324,7 +331,7 @@ collect_mf(Registry, Callback) ->
     ],
     ok.
 
--doc false.
+?DOC(false).
 -spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
 collect_metrics(Name, {CLabels, Labels, Registry}) ->
