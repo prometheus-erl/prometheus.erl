@@ -182,12 +182,12 @@ Histogram also accepts `buckets` option. Please refer to respective modules docs
 
 ### Advanced
 
-You will need these modules only if you're writing custom collector for app/lib that can't be instrumented directly.
+You will need these modules only if you're writing a custom collector for an app/lib that can't be instrumented directly.
 
 - [`prometheus_collector`](https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_collector.md) - common interface for collectors;
 - [`prometheus_format`](https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_format.md) - common interface for exposition formats;
 - [`prometheus_model_helpers`](https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_model_helpers.md) - provides API for working with underlying Prometheus models.
-You'll use that if you want to create custom collector.
+You'll use that if you want to create a custom collector.
 
 ## Build
 
@@ -198,29 +198,27 @@ You'll use that if you want to create custom collector.
 ## Configuration
 
 Prometheus.erl supports standard Erlang app configuration.
-- `collectors` - List of custom collectors modules to be registered automatically. If undefined list of all modules implementing `prometheus_collector` behaviour will be used.
-- `default_metrics` - List of metrics to be registered during app startup. Metric format: `{Type, Spec}` where `Type` is a metric type (counter, gauge, etc), `Spec` is a list to be passed to `Metric:declare/1`. Deprecated format `{Registry, Metric, Spec}` also supported.
+- `collectors` - List of custom collectors modules to be registered automatically.
+    Can be `all_loaded` in order to find all modules implementing the `prometheus_collector` behaviour.
+    Supports an "alias" option `default`, which will append all default collectors implemented in this library.
+    If undefined, the default collectors implemented in this library will be used.
+- `instrumenters` - List of custom instrumenter modules to be registered automatically.
+    Can be `all_loaded` in order to find all modules implementing the `prometheus_instrumenter` behaviour.
+    If undefined, none will be loaded.
+- `default_metrics` - List of metrics to be registered during app startup.
+    Metric format: `{Type, Spec}` where `Type` is a metric type (counter, gauge, etc),
+    `Spec` is a list to be passed to `Metric:declare/1`.
+    Deprecated format `{Registry, Metric, Spec}` also supported.
 
-Collectors config also supports "alias" option `default`. When used these collectors will be registered:
-<pre>
-prometheus_boolean,
-prometheus_counter,
-prometheus_gauge,
-prometheus_histogram,
-prometheus_mnesia_collector,
-prometheus_summary,
-prometheus_vm_memory_collector,
-prometheus_vm_statistics_collector,
-prometheus_vm_system_info_collector
-</pre>
 ## Collectors & Exporters Conventions
 
 ### Configuration
 
 All 3d-party libraries should be configured via `prometheus` app env.
 
-Exproters are responsible for maintianing scrape endpoint.
-Exporters usually tightly coupled with web server and are singletons. They should understand these keys:
+Exporters are responsible for maintaining scrape endpoint.
+Exporters are usually tightly coupled with the web server and are singletons.
+They should understand these keys:
  - `path` - url for scraping;
  - `format` - scrape format as module name i.e. `prometheus_text_format` or `prometheus_protobuf_format`.
 Exporter-specific options should be under `<exporter_name>_exporter` for erlang or `<Exporter_name>Exporter` for Elixir i.e. `PlugsExporter` or `elli_exporter`

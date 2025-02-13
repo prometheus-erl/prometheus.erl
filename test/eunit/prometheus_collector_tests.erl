@@ -19,14 +19,20 @@
 
 collector_setup_test() ->
     prometheus:start(),
-    application:set_env(prometheus, collectors, [qwe]),
     try
+        application:set_env(prometheus, collectors, all_loaded),
+        ?assertMatch(?DEFAULT_COLLECTORS, prometheus_collector:enabled_collectors())
+    after
+        application:unset_env(prometheus, collectors)
+    end,
+    try
+        application:set_env(prometheus, collectors, [qwe]),
         ?assertMatch([qwe], prometheus_collector:enabled_collectors())
     after
         application:unset_env(prometheus, collectors)
     end,
-    application:set_env(prometheus, collectors, [qwe, default]),
     try
+        application:set_env(prometheus, collectors, [qwe, default]),
         C1 = ?DEFAULT_COLLECTORS ++ [qwe],
         ?assertMatch(C1, prometheus_collector:enabled_collectors())
     after
