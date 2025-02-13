@@ -128,7 +128,8 @@ Called when collector is deregistered. If collector is stateful you can put clea
 enabled_collectors() ->
     lists:usort(
         case application:get_env(prometheus, collectors) of
-            undefined -> all_known_collectors();
+            undefined -> ?DEFAULT_COLLECTORS;
+            {ok, all_loaded} -> all_known_collectors();
             {ok, Collectors} -> catch_default_collectors(Collectors)
         end
     ).
