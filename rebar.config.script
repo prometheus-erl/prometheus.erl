@@ -9,7 +9,7 @@ ErlOpts =
     case list_to_integer(erlang:system_info(otp_release)) of
         N when N >= 27 ->
             %[warn_missing_doc, warn_missing_spec, warn_untyped_record | ErlOpts0];
-            [{with_ex_doc, true}, warn_missing_spec, warn_untyped_record | ErlOpts0];
+            [warn_missing_spec, warn_untyped_record | ErlOpts0];
         _ ->
             ErlOpts0
     end,

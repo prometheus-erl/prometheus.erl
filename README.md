@@ -233,21 +233,3 @@ Their configuration should be under `<collector_name>_collector`for erlang or `<
 For Erlang: `prometheus_<name>_collector`/`prometheus_<name>_exporter`.
 
 For Elixir: `Prometheus.<name>Collector`/`Prometheus.<name>Exporter`.
-
-## Contributing
-
-Sections order:
-
-`Types -> Macros -> Callbacks -> Public API -> Deprecations -> Private Parts`
-
-install git precommit hook:
-
-```
-   ./bin/pre-commit.sh install
-```
-
-Pre-commit check can be skipped passing `--no-verify` option to git commit.
-
-## License
-
-MIT
