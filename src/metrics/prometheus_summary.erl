@@ -10,7 +10,10 @@
 ?MODULEDOC("""
 Summary metric, to track the size of events.
 
-Example use cases for Summaries: - Response latency; - Request size; - Response size.
+Example use cases for Summaries:
+* Response latency;
+* Request size;
+* Response size.
 
 Example:
 
@@ -28,7 +31,6 @@ observe_request(Size) ->
 
 observe_response(Size) ->
     prometheus_summary:observe(response_size_bytes, Size).
-
 ```
 """).
 
