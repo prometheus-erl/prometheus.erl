@@ -22,9 +22,9 @@ Example:
 
 setup() ->
     prometheus_quantile_summary:declare([{name, request_size_bytes},
-                                {help, \"Request size in bytes.\"}]),
+                                         {help, \"Request size in bytes.\"}]),
     prometheus_quantile_summary:declare([{name, response_size_bytes},
-                                {help, \"Response size in bytes.\"}]).
+                                         {help, \"Response size in bytes.\"}]).
 
 observe_request(Size) ->
     prometheus_quantile_summary:observe(request_size_bytes, Size).
@@ -43,12 +43,32 @@ request_size_bytes\{quantile=\"0.5\"\}
 request_size_bytes\{quantile=\"0.9\"\}
 request_size_bytes\{quantile=\"0.95\"\}
 ```
+
+### Configuration
+The specs cannot have a key called `quantile`, as this key is reserved by the implementation.
+
+Passing `targets`, the quantile estimator can be fine-tuned, as in
+`quantile_estimator:f_targeted/1`. See `default_targets/0` for the default values.
+
+Passing `compress_limit` we can configure how often to run compressions into the quantile summary
+algorithm.
+
+### Notes
+
+The underlying algorithm implemented in `m:quantile_estimator` does not support mergeability of
+summaries, therefore a summary in this implementation is linear, that is, all updates happen on the
+same ets record. Because of this, race conditions can imply datapoint loss.
+Statistically, this might not be relevant, but such impact is not ensured.
+
+Because of this, support for quantile summaries is rather experimental
+and histograms are recommended instead.
 """).
 
 %%% metric
 -export([
     new/1,
     declare/1,
+    default_targets/0,
     deregister/1,
     deregister/2,
     set_default/2,
@@ -489,7 +509,8 @@ reduce_values(Values) ->
 create_summary(Name, Help, Data) ->
     prometheus_model_helpers:create_mf(Name, Help, summary, ?MODULE, Data).
 
-default_compress_limit() -> 100.
+default_compress_limit() ->
+    100.
 
 invariant_and_quantiles_from_spec(Spec) ->
     Targets = prometheus_metric_spec:get_value(targets, Spec, default_targets()),
@@ -516,6 +537,7 @@ validate_targets(Targets) when is_list(Targets) ->
 validate_targets(_Targets) ->
     erlang:error({invalid_targets, "targets should be a list of tuples"}).
 
+-spec default_targets() -> [{float(), float()}].
 default_targets() ->
     [{0.5, 0.02}, {0.9, 0.01}, {0.95, 0.005}].
 
