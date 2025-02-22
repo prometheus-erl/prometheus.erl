@@ -4,14 +4,18 @@
 
 instrumenter_setup_test() ->
     prometheus:start(),
-    ?assertNotMatch(undefined, ets:info(prometheus_instrumenter_tests)),
-    application:set_env(prometheus, instrumenters, [qwe]),
+    ?assertMatch(undefined, ets:info(prometheus_instrumenter_tests)),
     try
+        application:set_env(prometheus, instrumenters, [qwe]),
         ?assertMatch([qwe], prometheus_instrumenter:enabled_instrumenters())
     after
         application:unset_env(prometheus, instrumenters)
     end,
-    ?assertMatch(
-        [prometheus_test_instrumenter],
-        prometheus_instrumenter:enabled_instrumenters()
-    ).
+    try
+        application:set_env(prometheus, instrumenters, all_loaded),
+        Expected = [prometheus_test_instrumenter],
+        ?assertMatch(Expected, prometheus_instrumenter:enabled_instrumenters())
+    after
+        application:unset_env(prometheus, instrumenters)
+    end,
+    ?assertMatch([], prometheus_instrumenter:enabled_instrumenters()).
