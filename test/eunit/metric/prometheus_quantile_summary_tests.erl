@@ -4,6 +4,8 @@
 
 -include("prometheus_model.hrl").
 
+-define(TABLE, prometheus_quantile_summary_table).
+
 prometheus_format_test_() ->
     {foreach, fun prometheus_eunit_common:start/0, fun prometheus_eunit_common:stop/1, [
         fun test_registration/1,
@@ -19,16 +21,24 @@ prometheus_format_test_() ->
         fun test_values/1,
         fun test_collector1/1,
         fun test_collector2/1,
-        fun test_collector3/1
+        fun test_collector3/1,
+        fun test_merge_logic_when_fetching_value/1
     ]}.
+
+test_merge_logic_when_fetching_value(_) ->
+    Name = ?FUNCTION_NAME,
+    prometheus_quantile_summary:declare(
+        [{name, Name}, {labels, []}, {help, ""}, {compress_limit, 100}]
+    ),
+    % Observe many values
+    Fun = fun() -> prometheus_quantile_summary:observe(Name, 1) end,
+    Monitors = [spawn_monitor(Fun) || _ <- lists:seq(1, 1000)],
+    collect_monitors(Monitors),
+    [?_assertMatch({_, _, _}, prometheus_quantile_summary:value(Name))].
 
 test_registration(_) ->
     Name = orders_summary,
-    SpecWithRegistry = [
-        {name, Name},
-        {help, ""},
-        {registry, qwe}
-    ],
+    SpecWithRegistry = [{name, Name}, {help, ""}, {registry, qwe}],
     [
         ?_assertEqual(
             true,
@@ -270,7 +280,7 @@ test_deregister(_) ->
     [
         ?_assertMatch({true, true}, prometheus_quantile_summary:deregister(summary)),
         ?_assertMatch({false, false}, prometheus_quantile_summary:deregister(summary)),
-        ?_assertEqual(2, length(ets:tab2list(prometheus_quantile_summary_table))),
+        ?_assertEqual(2, length(ets:tab2list(?TABLE))),
         ?_assertMatch({1, 1, _}, prometheus_quantile_summary:value(simple_summary))
     ].
 
@@ -460,3 +470,12 @@ test_collector3(_) ->
             MFList
         )
     ].
+
+collect_monitors([]) ->
+    ok;
+collect_monitors([{Pid, Ref} | Monitors]) ->
+    receive
+        {'DOWN', Ref, process, Pid, Reason} ->
+            ?assertEqual(normal, Reason),
+            collect_monitors(Monitors)
+    end.
