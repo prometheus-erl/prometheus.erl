@@ -108,7 +108,6 @@ and histograms are recommended instead.
 -define(SUM_POS, 3).
 -define(COUNTER_POS, 2).
 -define(QUANTILE_POS, 4).
--define(WIDTH, 16).
 
 ?DOC("""
 Creates a summary using `Spec`.
@@ -267,9 +266,8 @@ remove(Registry, Name, LabelValues) ->
         lists:flatten([
             ets:take(
                 ?TABLE,
-                {Registry, Name, LabelValues, Scheduler}
+                {Registry, Name, LabelValues}
             )
-         || Scheduler <- schedulers_seq()
         ])
     of
         [] -> false;
@@ -302,10 +300,9 @@ reset(Registry, Name, LabelValues) ->
         lists:usort([
             ets:update_element(
                 ?TABLE,
-                {Registry, Name, LabelValues, Scheduler},
+                {Registry, Name, LabelValues},
                 [{?COUNTER_POS, 0}, {?SUM_POS, 0}, {?QUANTILE_POS, new_quantile(Configuration)}]
             )
-         || Scheduler <- schedulers_seq()
         ])
     of
         [_, _] -> true;
@@ -341,7 +338,7 @@ value(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     DU = prometheus_metric:mf_duration_unit(MF),
     #{quantiles := QNs} = prometheus_metric:mf_data(MF),
-    Spec = [{{{Registry, Name, LabelValues, '_'}, '$1', '$2', '$3', '_'}, [], ['$$']}],
+    Spec = [{{{Registry, Name, LabelValues}, '$1', '$2', '$3', '_'}, [], ['$$']}],
     case ets:select(?TABLE, Spec) of
         [] ->
             undefined;
@@ -399,7 +396,7 @@ values(Registry, Name) ->
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     prometheus_metric:deregister_mf(?TABLE, Registry),
-    true = ets:match_delete(?TABLE, {{Registry, '_', '_', '_'}, '_', '_', '_', '_'}),
+    true = ets:match_delete(?TABLE, {{Registry, '_', '_'}, '_', '_', '_', '_'}),
     ok.
 
 ?DOC(false).
@@ -445,7 +442,7 @@ collect_metrics(Name, {CLabels, Labels, Registry, DU, Configuration}) ->
 %%====================================================================
 
 deregister_select(Registry, Name) ->
-    [{{{Registry, Name, '_', '_'}, '_', '_', '_', '_'}, [], [true]}].
+    [{{{Registry, Name, '_'}, '_', '_', '_', '_'}, [], [true]}].
 
 validate_summary_spec(Spec) ->
     Labels = prometheus_metric_spec:labels(Spec),
@@ -486,19 +483,14 @@ insert_metric(Registry, Name, LabelValues, Value, ConflictCB) ->
     end.
 
 load_all_values(Registry, Name) ->
-    ets:match(?TABLE, {{Registry, Name, '$1', '_'}, '$2', '$3', '$4', '_'}).
+    ets:match(?TABLE, {{Registry, Name, '$1'}, '$2', '$3', '$4', '_'}).
 
 get_configuration(Registry, Name) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name),
     prometheus_metric:mf_data(MF).
 
-schedulers_seq() ->
-    lists:seq(0, ?WIDTH - 1).
-
 key(Registry, Name, LabelValues) ->
-    X = erlang:system_info(scheduler_id),
-    Rnd = X band (?WIDTH - 1),
-    {Registry, Name, LabelValues, Rnd}.
+    {Registry, Name, LabelValues}.
 
 reduce_values(Values) ->
     {
