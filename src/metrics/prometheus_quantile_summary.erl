@@ -168,7 +168,7 @@ set_default(Registry, Name) ->
     Configuration = get_configuration(Registry, Name),
     #{compress_limit := CompressLimit} = Configuration,
     Key = key(Registry, Name, []),
-    Quantile = quantile(Configuration),
+    Quantile = new_quantile(Configuration),
     ets:insert_new(?TABLE, {Key, 0, 0, Quantile, CompressLimit}).
 
 ?DOC(#{equiv => observe(default, Name, [], Value)}).
@@ -189,9 +189,11 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec observe(
-    prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels(), number()
-) -> ok.
+-spec observe(Registry, Name, LabelValues, Value) -> ok when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:labels(),
+    Value :: number().
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     Key = key(Registry, Name, LabelValues),
     case ets:lookup(?TABLE, Key) of
@@ -225,12 +227,11 @@ Raises:
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 * `{invalid_value, Value, Message}` if `Fun` isn't a function.
 """).
--spec observe_duration(
-    prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels(), fun(
-        () -> term()
-    )
-) ->
-    term().
+-spec observe_duration(Registry, Name, LabelValues, Value) -> T when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:labels(),
+    Value :: fun(() -> T).
 observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun) ->
     Start = erlang:monotonic_time(),
     try
@@ -302,7 +303,7 @@ reset(Registry, Name, LabelValues) ->
             ets:update_element(
                 ?TABLE,
                 {Registry, Name, LabelValues, Scheduler},
-                [{?COUNTER_POS, 0}, {?SUM_POS, 0}, {?QUANTILE_POS, quantile(Configuration)}]
+                [{?COUNTER_POS, 0}, {?SUM_POS, 0}, {?QUANTILE_POS, new_quantile(Configuration)}]
             )
          || Scheduler <- schedulers_seq()
         ])
@@ -366,7 +367,7 @@ values(Registry, Name) ->
                     ResAcc;
                 ([L, C, S, QE], ResAcc) ->
                     {PrevCount, PrevSum, PrevQE} = maps:get(
-                        L, ResAcc, {0, 0, quantile(Configuration)}
+                        L, ResAcc, {0, 0, new_quantile(Configuration)}
                     ),
                     ResAcc#{L => {PrevCount + C, PrevSum + S, quantile_merge(PrevQE, QE)}}
             end,
@@ -421,7 +422,7 @@ collect_metrics(Name, {CLabels, Labels, Registry, DU, Configuration}) ->
             %% Ignore quantile evaluation if no data are provided
             ResAcc;
         ([L, C, S, QE], ResAcc) ->
-            {PrevCount, PrevSum, PrevQE} = maps:get(L, ResAcc, {0, 0, quantile(Configuration)}),
+            {PrevCount, PrevSum, PrevQE} = maps:get(L, ResAcc, {0, 0, new_quantile(Configuration)}),
             ResAcc#{L => {PrevCount + C, PrevSum + S, quantile_merge(PrevQE, QE)}}
     end,
     ReducedMap = lists:foldl(Foldl, #{}, MFValues),
@@ -474,7 +475,7 @@ insert_metric(Registry, Name, LabelValues, Value, ConflictCB) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     Configuration = prometheus_metric:mf_data(MF),
     #{compress_limit := CompressLimit} = Configuration,
-    Quantile = quantile(Configuration, Value),
+    Quantile = insert_into_new_quantile(Configuration, Value),
     Elem = {key(Registry, Name, LabelValues), 1, Value, Quantile, CompressLimit},
     case ets:insert_new(?TABLE, Elem) of
         %% some sneaky process already inserted
@@ -541,11 +542,11 @@ validate_targets(_Targets) ->
 default_targets() ->
     [{0.5, 0.02}, {0.9, 0.01}, {0.95, 0.005}].
 
-quantile(#{invariant := Invariant}) ->
+new_quantile(#{invariant := Invariant}) ->
     quantile_estimator:new(Invariant).
 
-quantile(Configuration, Val) ->
-    quantile_estimator:insert(Val, quantile(Configuration)).
+insert_into_new_quantile(Configuration, Val) ->
+    quantile_estimator:insert(Val, new_quantile(Configuration)).
 
 quantile_add(#quantile_estimator{inserts_since_compression = ISS} = Q, Val, CompressLimit) ->
     Q1 =
