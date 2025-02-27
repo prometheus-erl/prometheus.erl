@@ -1,0 +1,37 @@
+name: Upload release
+
+on:
+  push:
+    tags:
+    - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container:
+      image: erlang:27
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - run: chown --recursive --reference=/ .
+      - run: git config --global --add safe.directory '*'
+      - run: rebar3 compile
+      - run: rebar3 lint
+      - run: rebar3 xref
+      - run: rebar3 eunit
+      - run: rebar3 fmt --check
+      - run: rebar3 ex_doc
+      - run: rebar3 dialyzer
+
+      - uses: ncipollo/release-action@v1
+        with:
+          generateReleaseNotes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to hex.pm
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: rebar3 hex publish -r hexpm --yes
