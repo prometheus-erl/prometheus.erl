@@ -10,6 +10,7 @@ prometheus_format_test_() ->
         fun test_errors/1,
         fun test_buckets/1,
         fun test_observe/1,
+        fun test_pobserve/1,
         fun test_observe_n/0,
         fun test_observe_duration_seconds/1,
         fun test_observe_duration_milliseconds/1,
@@ -265,6 +266,43 @@ test_observe(_) ->
     Value = prometheus_histogram:value(http_request_duration_milliseconds, [get]),
     prometheus_histogram:reset(http_request_duration_milliseconds, [get]),
     RValue = prometheus_histogram:value(http_request_duration_milliseconds, [get]),
+    [
+        ?_assertMatch(
+            {[3, 4, 2, 2, 3, 1], Sum} when
+                Sum > 6974.5 andalso Sum < 6974.55,
+            Value
+        ),
+        ?_assertEqual({[0, 0, 0, 0, 0, 0], 0}, RValue)
+    ].
+
+test_pobserve(_) ->
+    Name = http_request_duration_milliseconds,
+    Buckets = [100, 300, 500, 750, 1000, infinity],
+    prometheus_histogram:new([
+        {name, Name},
+        {labels, [method]},
+        {buckets, Buckets},
+        {help, "Http Request execution time"},
+        {duration_unit, false}
+    ]),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 0, 95),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 0, 100),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 1, 102),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 1, 150),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 1, 250),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 0, 75),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 2, 350),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 3, 550),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 4, 950),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 3, 500.2),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 1, 150.4),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 2, 450.5),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 4, 850.3),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 4, 750.9),
+    prometheus_histogram:pobserve(default, Name, [get], Buckets, 5, 1650.23),
+    Value = prometheus_histogram:value(Name, [get]),
+    prometheus_histogram:reset(Name, [get]),
+    RValue = prometheus_histogram:value(Name, [get]),
     [
         ?_assertMatch(
             {[3, 4, 2, 2, 3, 1], Sum} when
