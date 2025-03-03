@@ -131,14 +131,8 @@ linear(Start, Step, Count) ->
     linear(Start, Step, Count, []).
 
 -spec position(buckets(), number()) -> pos_integer().
-position(Buckets, Value) ->
-    position(
-        Buckets,
-        fun(Bound) ->
-            Value =< Bound
-        end,
-        0
-    ).
+position(Buckets, Value) when is_list(Buckets), is_number(Value) ->
+    find_position(Buckets, Value, 0).
 
 linear(_Current, _Step, 0, Acc) ->
     lists:reverse(Acc);
@@ -161,13 +155,13 @@ try_to_maintain_integer_bounds(Bound) when is_float(Bound) ->
         false -> Bound
     end.
 
--spec position(buckets(), fun((bucket_bound()) -> boolean()), non_neg_integer()) -> pos_integer().
-position([], _Pred, _Pos) ->
+-spec find_position(buckets(), number(), non_neg_integer()) -> pos_integer().
+find_position([], _Value, _Pos) ->
     0;
-position([H | L], Pred, Pos) ->
-    case Pred(H) of
+find_position([Bound | L], Value, Pos) ->
+    case Value =< Bound of
         true ->
             Pos;
         false ->
-            position(L, Pred, Pos + 1)
+            find_position(L, Value, Pos + 1)
     end.
