@@ -87,6 +87,10 @@ inc(Caller) ->
 -behaviour(prometheus_metric).
 -behaviour(prometheus_collector).
 
+%% Records will be triplets `{Key, ISum, FSum}`
+%%  where `ISum` are integer sums, and `FSum` are float sums
+%% Keys use the scheduler index, because counters by definition aggregate
+%%  even after parallel updates. Hence we can run updates without locks.
 -define(TABLE, ?PROMETHEUS_COUNTER_TABLE).
 -define(ISUM_POS, 2).
 -define(FSUM_POS, 3).
@@ -180,7 +184,7 @@ Raises:
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
     LabelValues :: prometheus_metric:labels(),
-    Value :: non_neg_integer().
+    Value :: non_neg_integer() | float().
 inc(Registry, Name, LabelValues, Value) when is_integer(Value), Value >= 0 ->
     Key = key(Registry, Name, LabelValues),
     Spec = {?ISUM_POS, Value},
@@ -188,15 +192,15 @@ inc(Registry, Name, LabelValues, Value) when is_integer(Value), Value >= 0 ->
         ets:update_counter(?TABLE, Key, Spec)
     catch
         error:badarg ->
-            insert_metric(Registry, Name, LabelValues, Value, fun inc/4)
+            insert_metric_int(Registry, Name, LabelValues, Value, fun inc/4)
     end,
     ok;
-inc(Registry, Name, LabelValues, Value) when is_number(Value), Value >= 0 ->
+inc(Registry, Name, LabelValues, Value) when is_float(Value), Value >= 0 ->
     Key = key(Registry, Name, LabelValues),
     Spec = [{{Key, '$1', '$2'}, [], [{{{Key}, '$1', {'+', '$2', Value}}}]}],
     case ets:select_replace(?TABLE, Spec) of
         0 ->
-            insert_metric(Registry, Name, LabelValues, Value, fun inc/4);
+            insert_metric_float(Registry, Name, LabelValues, Value, fun inc/4);
         1 ->
             ok
     end;
@@ -349,9 +353,16 @@ collect_metrics(Name, {CLabels, Labels, Registry}) ->
 deregister_select(Registry, Name) ->
     [{{{Registry, Name, '_', '_'}, '_', '_'}, [], [true]}].
 
-insert_metric(Registry, Name, LabelValues, Value, ConflictCB) ->
-    prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
+insert_metric_int(Registry, Name, LabelValues, Value, ConflictCB) ->
+    Counter = {key(Registry, Name, LabelValues), Value, 0},
+    insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter).
+
+insert_metric_float(Registry, Name, LabelValues, Value, ConflictCB) ->
     Counter = {key(Registry, Name, LabelValues), 0, Value},
+    insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter).
+
+insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter) ->
+    prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case ets:insert_new(?TABLE, Counter) of
         %% some sneaky process already inserted
         false ->
