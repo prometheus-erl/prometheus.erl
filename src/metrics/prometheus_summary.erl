@@ -15,6 +15,10 @@ Example use cases for Summaries:
 * Request size;
 * Response size.
 
+This keeps track of the number of events, and the sum of their values.
+This allows you to calculate the average value of each event,
+and with enough datapoints, to keep track of its average.
+
 Example:
 
 ```erlang
@@ -72,19 +76,10 @@ observe_response(Size) ->
 -behaviour(prometheus_collector).
 
 -define(TABLE, ?PROMETHEUS_SUMMARY_TABLE).
+-define(COUNTER_POS, 2).
 -define(ISUM_POS, 3).
 -define(FSUM_POS, 4).
--define(COUNTER_POS, 2).
 -define(WIDTH, 16).
-
--type conflict_cb() :: fun(
-    (
-        prometheus_registry:registry(),
-        prometheus_metric:name(),
-        prometheus_metric:labels(),
-        number()
-    ) -> ok
-).
 
 ?DOC("""
 Creates a summary using `Spec`.
@@ -173,7 +168,7 @@ observe(Registry, Name, LabelValues, Value) when is_integer(Value) ->
         ets:update_counter(?TABLE, Key, Spec)
     catch
         error:badarg ->
-            insert_metric(Registry, Name, LabelValues, Value, fun observe/4)
+            insert_metric_int(Registry, Name, LabelValues, Value, fun observe/4)
     end,
     ok;
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
@@ -181,7 +176,7 @@ observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     Spec = [{{Key, '$1', '$2', '$3'}, [], [{{{Key}, {'+', '$1', 1}, '$2', {'+', '$3', Value}}}]}],
     case ets:select_replace(?TABLE, Spec) of
         0 ->
-            insert_metric(Registry, Name, LabelValues, Value, fun observe/4);
+            insert_metric_float(Registry, Name, LabelValues, Value, fun observe/4);
         1 ->
             ok
     end;
@@ -429,15 +424,17 @@ raise_error_if_quantile_label_found("quantile") ->
 raise_error_if_quantile_label_found(Label) ->
     Label.
 
--spec insert_metric(Registry, Name, LabelValues, Value, ConflictCB) -> ok when
-    Registry :: prometheus_registry:registry(),
-    Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels(),
-    Value :: number(),
-    ConflictCB :: conflict_cb().
-insert_metric(Registry, Name, LabelValues, Value, ConflictCB) ->
+insert_metric_int(Registry, Name, LabelValues, Value, ConflictCB) ->
+    Counter = {key(Registry, Name, LabelValues), 1, Value, 0},
+    insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter).
+
+insert_metric_float(Registry, Name, LabelValues, Value, ConflictCB) ->
+    Counter = {key(Registry, Name, LabelValues), 1, 0, Value},
+    insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter).
+
+insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    case ets:insert_new(?TABLE, {key(Registry, Name, LabelValues), 1, 0, Value}) of
+    case ets:insert_new(?TABLE, Counter) of
         %% some sneaky process already inserted
         false ->
             ConflictCB(Registry, Name, LabelValues, Value);

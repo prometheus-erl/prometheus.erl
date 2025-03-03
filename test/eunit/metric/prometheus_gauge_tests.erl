@@ -9,6 +9,7 @@ prometheus_format_test_() ->
         fun test_registration/1,
         fun test_errors/1,
         fun test_set/1,
+        fun test_set_undefined/1,
         fun test_inc/1,
         fun test_dec/1,
         fun test_set_to_current_time/1,
@@ -44,6 +45,7 @@ test_registration(_) ->
 
 test_errors(_) ->
     prometheus_gauge:new([{name, with_label}, {labels, [label]}, {help, ""}]),
+    prometheus_gauge:new([{name, no_labels}, {help, ""}]),
 
     %% basic name/labels/help validations test
     [
@@ -70,9 +72,18 @@ test_errors(_) ->
             prometheus_gauge:inc(pool_size, [], "qwe")
         ),
         ?_assertError(
+            {invalid_value, <<"qwe">>, "dec accepts only numbers"},
+            prometheus_gauge:dec(no_labels, <<"qwe">>)
+        ),
+        ?_assertError(
             {invalid_value, "qwe", "dec accepts only numbers"},
             prometheus_gauge:dec(pool_size, [], "qwe")
         ),
+        ?_assertError(
+            {invalid_value, "qwe", "dec accepts only numbers"},
+            prometheus_gauge:dec(default, pool_size, [], "qwe")
+        ),
+
         ?_assertError(
             {invalid_value, "qwe", "track_inprogress accepts only functions"},
             prometheus_gauge:track_inprogress(pool_size, "qwe")
@@ -157,16 +168,38 @@ test_errors(_) ->
 
 test_set(_) ->
     prometheus_gauge:new([{name, pool_size}, {labels, [client]}, {help, ""}]),
+    prometheus_gauge:set(pool_size, [redis], undefined),
+    ValueUndefined = prometheus_gauge:value(pool_size, [redis]),
+    prometheus_gauge:set(pool_size, [float_pool], 92.3),
+    ValueFloat = prometheus_gauge:value(pool_size, [float_pool]),
     prometheus_gauge:set(pool_size, [mongodb], 100),
-    Value = prometheus_gauge:value(pool_size, [mongodb]),
-    prometheus_gauge:set(pool_size, [mongodb], 105),
     Value1 = prometheus_gauge:value(pool_size, [mongodb]),
+    prometheus_gauge:set(pool_size, [mongodb], 105),
+    Value2 = prometheus_gauge:value(pool_size, [mongodb]),
     prometheus_gauge:reset(pool_size, [mongodb]),
     RValue = prometheus_gauge:value(pool_size, [mongodb]),
     [
-        ?_assertEqual(100, Value),
-        ?_assertEqual(105, Value1),
+        ?_assertEqual(undefined, ValueUndefined),
+        ?_assertEqual(92.3, ValueFloat),
+        ?_assertEqual(100, Value1),
+        ?_assertEqual(105, Value2),
         ?_assertEqual(0, RValue)
+    ].
+
+test_set_undefined(_) ->
+    prometheus_gauge:new([{name, pool_size}, {labels, [client]}, {help, ""}]),
+    prometheus_gauge:set(pool_size, [redis], undefined),
+    ValueUndefined = prometheus_gauge:value(pool_size, [redis]),
+    [
+        ?_assertError(
+            {invalid_operation, 'inc/dec', "Can't inc/dec undefined"},
+            prometheus_gauge:inc(pool_size, [redis], 1)
+        ),
+        ?_assertError(
+            {invalid_operation, 'inc/dec', "Can't inc/dec undefined"},
+            prometheus_gauge:inc(pool_size, [redis], 0.8)
+        ),
+        ?_assertEqual(undefined, ValueUndefined)
     ].
 
 test_inc(_) ->
