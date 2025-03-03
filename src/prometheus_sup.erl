@@ -33,15 +33,15 @@ init([]) ->
 
 create_tables() ->
     Tables = [
-        {?PROMETHEUS_REGISTRY_TABLE, {bag, read_concurrency}},
-        {?PROMETHEUS_COUNTER_TABLE, write_concurrency},
-        {?PROMETHEUS_GAUGE_TABLE, write_concurrency},
-        {?PROMETHEUS_SUMMARY_TABLE, write_concurrency},
-        {?PROMETHEUS_QUANTILE_SUMMARY_TABLE, write_concurrency},
-        {?PROMETHEUS_HISTOGRAM_TABLE, write_concurrency},
-        {?PROMETHEUS_BOOLEAN_TABLE, write_concurrency}
+        {?PROMETHEUS_REGISTRY_TABLE, [bag, {read_concurrency, true}]},
+        {?PROMETHEUS_COUNTER_TABLE, [{write_concurrency, true}]},
+        {?PROMETHEUS_GAUGE_TABLE, [{write_concurrency, true}]},
+        {?PROMETHEUS_SUMMARY_TABLE, [{write_concurrency, true}]},
+        {?PROMETHEUS_QUANTILE_SUMMARY_TABLE, [{write_concurrency, true}]},
+        {?PROMETHEUS_HISTOGRAM_TABLE, [{read_concurrency, true}, {write_concurrency, true}]},
+        {?PROMETHEUS_BOOLEAN_TABLE, [{write_concurrency, true}]}
     ],
-    [maybe_create_table(Name, Concurrency) || {Name, Concurrency} <- Tables],
+    [maybe_create_table(Name, Options) || {Name, Options} <- Tables],
     ok.
 
 register_collectors() ->
@@ -67,15 +67,13 @@ setup_instrumenters() ->
 default_metrics() ->
     application:get_env(prometheus, default_metrics, []).
 
-maybe_create_table(Name, {Type, Concurrency}) ->
+maybe_create_table(Name, Options) ->
     case ets:info(Name) of
         undefined ->
-            ets:new(Name, [Type, named_table, public, {Concurrency, true}]);
+            ets:new(Name, [named_table, public | Options]);
         _ ->
             ok
-    end;
-maybe_create_table(Name, Concurrency) ->
-    maybe_create_table(Name, {set, Concurrency}).
+    end.
 
 declare_metric({Metric, Spec}) ->
     declare_metric(Metric, Spec);
