@@ -15,9 +15,13 @@ Gauge is a metric that represents a single numerical value that can arbitrarily 
 A Gauge is typically used for measured values like temperatures or current memory usage,
 but also \"counts\" that can go up and down, like the number of running processes.
 
+It can take the value of undefined when the value is not known.
+In that case, increments and decrements will not be possible
+and explicitly setting to a new value will be necessary.
+
 Example use cases for Gauges:
 
-* Inprogress requests
+* In-progress requests
 * Number of items in a queue
 * Free memory
 * Total memory
@@ -95,6 +99,8 @@ track_checked_out_sockets(CheckoutFun) ->
 -behaviour(prometheus_metric).
 -behaviour(prometheus_collector).
 
+%% Records will be triplets `{Key, ISum, FSum}`
+%%  where `IGauge` are integer gauges, and `FGauge` are float gauges
 -define(TABLE, ?PROMETHEUS_GAUGE_TABLE).
 -define(IGAUGE_POS, 2).
 -define(FGAUGE_POS, 3).
@@ -183,23 +189,33 @@ Raises:
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
     LabelValues :: prometheus_metric:labels(),
-    Value :: number().
-set(Registry, Name, LabelValues, Value) ->
-    Update =
-        case Value of
-            _ when is_number(Value) ->
-                [{?IGAUGE_POS, 0}, {?FGAUGE_POS, Value}];
-            undefined ->
-                [{?IGAUGE_POS, undefined}, {?FGAUGE_POS, undefined}];
-            _ ->
-                erlang:error({invalid_value, Value, "set accepts only numbers and 'undefined'"})
-        end,
+    Value :: undefined | number().
+set(Registry, Name, LabelValues, Value) when is_integer(Value) ->
+    Update = [{?IGAUGE_POS, Value}, {?FGAUGE_POS, 0}],
     case ets:update_element(?TABLE, {Registry, Name, LabelValues}, Update) of
         false ->
-            insert_metric(Registry, Name, LabelValues, Value, fun set/4);
+            insert_metric_int(Registry, Name, LabelValues, Value, fun set/4);
         true ->
             ok
-    end.
+    end;
+set(Registry, Name, LabelValues, Value) when is_float(Value) ->
+    Update = [{?IGAUGE_POS, 0}, {?FGAUGE_POS, Value}],
+    case ets:update_element(?TABLE, {Registry, Name, LabelValues}, Update) of
+        false ->
+            insert_metric_float(Registry, Name, LabelValues, Value, fun set/4);
+        true ->
+            ok
+    end;
+set(Registry, Name, LabelValues, undefined) ->
+    Update = [{?IGAUGE_POS, undefined}, {?FGAUGE_POS, undefined}],
+    case ets:update_element(?TABLE, {Registry, Name, LabelValues}, Update) of
+        false ->
+            insert_metric_undefined(Registry, Name, LabelValues, undefined, fun set/4);
+        true ->
+            ok
+    end;
+set(_, _, _, Value) ->
+    erlang:error({invalid_value, Value, "set accepts only numbers and 'undefined'"}).
 
 ?DOC(#{equiv => inc(default, Name, [], 1)}).
 -spec inc(prometheus_metric:name()) -> ok.
@@ -236,19 +252,21 @@ Raises:
     LabelValues :: prometheus_metric:labels(),
     Value :: number().
 inc(Registry, Name, LabelValues, Value) when is_integer(Value) ->
+    Key = key(Registry, Name, LabelValues),
+    Spec = {?IGAUGE_POS, Value},
     try
-        ets:update_counter(?TABLE, {Registry, Name, LabelValues}, {?IGAUGE_POS, Value})
+        ets:update_counter(?TABLE, Key, Spec)
     catch
         error:badarg ->
-            maybe_insert_metric_for_inc(Registry, Name, LabelValues, Value)
+            maybe_insert_metric_for_inc_int(Registry, Name, LabelValues, Value)
     end,
     ok;
-inc(Registry, Name, LabelValues, Value) when is_number(Value) ->
+inc(Registry, Name, LabelValues, Value) when is_float(Value) ->
     Key = key(Registry, Name, LabelValues),
-    Spec = [{{Key, '$1', '$2'}, [], [{{{Key}, '$1', {'+', '$2', Value}}}]}],
+    Spec = [{{Key, '$1', '$2'}, [{is_integer, '$1'}], [{{{Key}, '$1', {'+', '$2', Value}}}]}],
     case ets:select_replace(?TABLE, Spec) of
         0 ->
-            insert_metric(Registry, Name, LabelValues, Value, fun inc/4);
+            maybe_insert_metric_for_inc_float(Registry, Name, LabelValues, Value);
         1 ->
             ok
     end;
@@ -522,20 +540,40 @@ collect_metrics(Name, {CLabels, Labels, Registry, DU}) ->
 key(Registry, Name, LabelValues) ->
     {Registry, Name, LabelValues}.
 
-maybe_insert_metric_for_inc(Registry, Name, LabelValues, Value) ->
+maybe_insert_metric_for_inc_int(Registry, Name, LabelValues, Value) ->
     case ets:lookup(?TABLE, {Registry, Name, LabelValues}) of
         [{_Key, undefined, undefined}] ->
             erlang:error({invalid_operation, 'inc/dec', "Can't inc/dec undefined"});
         _ ->
-            insert_metric(Registry, Name, LabelValues, Value, fun inc/4)
+            insert_metric_int(Registry, Name, LabelValues, Value, fun inc/4)
+    end.
+
+maybe_insert_metric_for_inc_float(Registry, Name, LabelValues, Value) ->
+    case ets:lookup(?TABLE, {Registry, Name, LabelValues}) of
+        [{_Key, undefined, undefined}] ->
+            erlang:error({invalid_operation, 'inc/dec', "Can't inc/dec undefined"});
+        _ ->
+            insert_metric_float(Registry, Name, LabelValues, Value, fun inc/4)
     end.
 
 deregister_select(Registry, Name) ->
     [{{{Registry, Name, '_'}, '_', '_'}, [], [true]}].
 
-insert_metric(Registry, Name, LabelValues, Value, ConflictCB) ->
+insert_metric_int(Registry, Name, LabelValues, Value, ConflictCB) ->
+    Counter = {key(Registry, Name, LabelValues), Value, 0},
+    insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter).
+
+insert_metric_float(Registry, Name, LabelValues, Value, ConflictCB) ->
+    Counter = {key(Registry, Name, LabelValues), 0, Value},
+    insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter).
+
+insert_metric_undefined(Registry, Name, LabelValues, Value, ConflictCB) ->
+    Counter = {key(Registry, Name, LabelValues), undefined, undefined},
+    insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter).
+
+insert_metric(Registry, Name, LabelValues, Value, ConflictCB, Counter) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    case ets:insert_new(?TABLE, {{Registry, Name, LabelValues}, 0, Value}) of
+    case ets:insert_new(?TABLE, Counter) of
         %% some sneaky process already inserted
         false ->
             ConflictCB(Registry, Name, LabelValues, Value);
@@ -546,7 +584,7 @@ insert_metric(Registry, Name, LabelValues, Value, ConflictCB) ->
 load_all_values(Registry, Name) ->
     ets:match(?TABLE, {{Registry, Name, '$1'}, '$2', '$3'}).
 
-sum(_IValue, undefined) ->
+sum(undefined, _FValue) ->
     undefined;
 sum(IValue, FValue) ->
     IValue + FValue.
