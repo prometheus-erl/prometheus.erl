@@ -268,7 +268,12 @@ observe_n(_Registry, _Name, _LabelValues, Value, Count) when is_number(Value) ->
 observe_n(_Registry, _Name, _LabelValues, Value, _Count) ->
     erlang:error({invalid_value, Value, "observe_n accepts only number values"}).
 
-?DOC(false).
+?DOC("""
+Observes the given `Value`, `Count` times, in the bucket position of the bucket list.
+
+Useful when the bucket position is known in advance, as it avoids having to compute such value
+during the observation.
+""").
 -spec pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
@@ -289,7 +294,7 @@ pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) when is_integer
             insert_metric(Registry, Name, LabelValues, Value, Fun)
     end,
     ok;
-pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) when is_number(Value) ->
+pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) when is_float(Value) ->
     Key = key(Registry, Name, LabelValues),
     case fobserve_impl(Key, Buckets, BucketPos, Value, 1) of
         0 ->
