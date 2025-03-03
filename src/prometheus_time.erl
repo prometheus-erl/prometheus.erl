@@ -177,7 +177,7 @@ duration_unit_from_string(_, []) ->
     undefined.
 
 from_native(Value) ->
-    erlang:convert_time_unit(trunc(Value), native, nano_seconds).
+    erlang:convert_time_unit(trunc(Value), native, nanosecond).
 
 -spec from_native(number(), duration_unit()) -> number().
 from_native(Value, microseconds) ->
@@ -200,7 +200,7 @@ from_native(Value, days) ->
     Nanoseconds / 86400000000000.
 
 to_native(Value) ->
-    erlang:convert_time_unit(trunc(Value), nano_seconds, native).
+    erlang:convert_time_unit(trunc(Value), nanosecond, native).
 
 -spec to_native(number(), duration_unit()) -> number().
 to_native(Value, microseconds) ->
