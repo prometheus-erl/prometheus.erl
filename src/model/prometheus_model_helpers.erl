@@ -192,18 +192,15 @@ boolean_metric(Labels, Value0) ->
 -spec boolean_value(Value) -> RealValue when
     Value :: prometheus:prometheus_boolean(),
     RealValue :: undefined | 0 | 1.
-boolean_value(Value) ->
-    case Value of
-        true -> 1;
-        false -> 0;
-        1 -> 1;
-        0 -> 0;
-        [] -> 0;
-        _ when is_number(Value) andalso Value > 0 -> 1;
-        _ when is_list(Value) -> 1;
-        undefined -> undefined;
-        _ -> erlang:error({invalid_value, Value, "value is not boolean"})
-    end.
+boolean_value(true) -> 1;
+boolean_value(false) -> 0;
+boolean_value(undefined) -> undefined;
+boolean_value(1) -> 1;
+boolean_value(0) -> 0;
+boolean_value([]) -> 0;
+boolean_value([_ | _]) -> 1;
+boolean_value(Value) when is_number(Value), Value > 0 -> 1;
+boolean_value(Value) -> erlang:error({invalid_value, Value, "value is not boolean"}).
 
 ?DOC(#{equiv => lists:map(fun counter_metric/1, Values)}).
 -spec counter_metrics(Specs) -> [prometheus_model:'Metric'()] when
