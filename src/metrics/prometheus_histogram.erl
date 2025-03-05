@@ -98,7 +98,7 @@ the number of time ticks when the recent value was observed).
 -define(WIDTH, 16).
 
 %% ets row layout
-%% {Key, NBounds, Sum, Bucket1, Bucket2, ...}
+%% {Key, NBounds, ISum, FSum, Bucket1, Bucket2, ...}
 %% NBounds is a list of bounds possibly converted to native units
 
 ?DOC("""
@@ -202,9 +202,11 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if histogram with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec observe(
-    prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels(), number()
-) -> ok.
+-spec observe(Registry, Name, LabelValues, Value) -> ok when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:labels(),
+    Value :: number().
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     observe_n(Registry, Name, LabelValues, Value, 1);
 observe(_Registry, _Name, _LabelValues, Value) ->
@@ -253,7 +255,7 @@ observe_n(Registry, Name, LabelValues, Value, Count) when is_integer(Value), is_
             insert_metric(Registry, Name, LabelValues, Value, Count, fun observe_n/5)
     end,
     ok;
-observe_n(Registry, Name, LabelValues, Value, Count) when is_number(Value), is_integer(Count) ->
+observe_n(Registry, Name, LabelValues, Value, Count) when is_float(Value), is_integer(Count) ->
     Key = key(Registry, Name, LabelValues),
     case ets:lookup(?TABLE, Key) of
         [Metric] ->
