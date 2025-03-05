@@ -21,45 +21,50 @@ ErlOpts =
     end,
 
 SrcDir = "src/",
-{ok, SrcDirList} = file:list_dir(SrcDir),
-Dirs = lists:filter(
-    fun(F) -> not filelib:is_regular(filename:join(SrcDir, F)) end,
-    SrcDirList
-),
 
-ModulesInDir = fun M(Dir) ->
-    {ok, FileList} = file:list_dir(Dir),
-    lists:flatmap(
-        fun(File) ->
-            case filename:extension(File) of
-                ".erl" ->
-                    Module = filename:basename(File, ".erl"),
-                    [list_to_atom(Module)];
-                _ ->
-                    case filelib:is_dir(filename:join(Dir, File)) of
-                        true ->
-                            M(filename:join(Dir, File));
-                        false ->
-                            []
+case file:list_dir(SrcDir) of
+    {ok, SrcDirList} ->
+        Dirs = lists:filter(
+            fun(F) -> not filelib:is_regular(filename:join(SrcDir, F)) end,
+            SrcDirList
+        ),
+
+        ModulesInDir = fun M(Dir) ->
+            {ok, FileList} = file:list_dir(Dir),
+            lists:flatmap(
+                fun(File) ->
+                    case filename:extension(File) of
+                        ".erl" ->
+                            Module = filename:basename(File, ".erl"),
+                            [list_to_atom(Module)];
+                        _ ->
+                            case filelib:is_dir(filename:join(Dir, File)) of
+                                true ->
+                                    M(filename:join(Dir, File));
+                                false ->
+                                    []
+                            end
                     end
-            end
+                end,
+                FileList
+            )
         end,
-        FileList
-    )
-end,
 
-DirsInDir = fun(Dir) ->
-    {ok, DirList} = file:list_dir(Dir),
-    lists:filter(fun(F) -> not filelib:is_regular(filename:join(Dir, F)) end, DirList)
-end,
+        DirsInDir = fun(Dir) ->
+            {ok, DirList} = file:list_dir(Dir),
+            lists:filter(fun(F) -> not filelib:is_regular(filename:join(Dir, F)) end, DirList)
+        end,
 
-GroupModules = lists:map(
-    fun(Dir) ->
-        {list_to_binary(Dir), lists:flatten(ModulesInDir(filename:join(SrcDir, Dir)))}
-    end,
-    Dirs
-),
+        GroupModules = lists:map(
+            fun(Dir) ->
+                {list_to_binary(Dir), lists:flatten(ModulesInDir(filename:join(SrcDir, Dir)))}
+            end,
+            Dirs
+        ),
 
-ExDoc = [{groups_for_modules, GroupModules} | ExDoc0],
+        ExDoc = [{groups_for_modules, GroupModules} | ExDoc0],
 
-[{ex_doc, ExDoc}, {erl_opts, ErlOpts} | Config1].
+        [{ex_doc, ExDoc}, {erl_opts, ErlOpts} | Config1];
+    {error, _} ->
+        [{erl_opts, ErlOpts} | Config0]
+end.
