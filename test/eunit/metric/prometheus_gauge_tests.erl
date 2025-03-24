@@ -16,6 +16,7 @@ prometheus_format_test_() ->
         fun test_track_inprogress/1,
         fun test_set_duration_seconds/1,
         fun test_set_duration_milliseconds/1,
+        fun test_get_value_from_undefined_with_float/1,
         fun test_deregister/1,
         fun test_remove/1,
         fun test_default_value/1,
@@ -343,6 +344,26 @@ test_set_duration_milliseconds(_) ->
         ?_assertMatch(1, ValueF),
         ?_assertMatch(true, 900 < Value andalso Value < 1200),
         ?_assertMatch(true, 0 < ValueE andalso ValueE < 100)
+    ].
+
+test_get_value_from_undefined_with_float(_) ->
+    prometheus_gauge:new([{name, gauge_seconds}, {labels, [client]}, {help, ""}]),
+    prometheus_gauge:inc(gauge_seconds, [redis], 2),
+    prometheus_gauge:inc(gauge_seconds, [redis], 1.2),
+    Value = prometheus_gauge:value(gauge_seconds, [redis]),
+    prometheus_gauge:set(gauge_seconds, [redis], undefined),
+    ValueUndefined = prometheus_gauge:value(gauge_seconds, [redis]),
+    [
+        ?_assertError(
+            {invalid_operation, 'inc/dec', "Can't inc/dec undefined"},
+            prometheus_gauge:inc(gauge_seconds, [redis], 1)
+        ),
+        ?_assertError(
+            {invalid_operation, 'inc/dec', "Can't inc/dec undefined"},
+            prometheus_gauge:inc(gauge_seconds, [redis], 0.8)
+        ),
+        ?_assertEqual(3.0e-9, Value),
+        ?_assertEqual(undefined, ValueUndefined)
     ].
 
 test_deregister(_) ->
