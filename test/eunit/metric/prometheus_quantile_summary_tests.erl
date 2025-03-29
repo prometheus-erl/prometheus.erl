@@ -266,8 +266,8 @@ test_observe_configured_quantiles_and_error(_) ->
 test_observe_duration_seconds(_) ->
     prometheus_quantile_summary:new([
         {name, <<"fun_duration_seconds">>},
-        {help, ""},
-        {duration_unit, seconds}
+        {duration_unit, seconds},
+        {help, ""}
     ]),
     prometheus_quantile_summary:observe_duration(<<"fun_duration_seconds">>, fun() ->
         timer:sleep(1000)
