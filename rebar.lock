@@ -1,8 +1,8 @@
 {"1.2.0",
-[{<<"ddskerl">>,{pkg,<<"ddskerl">>,<<"0.2.0">>},0}]}.
+[{<<"ddskerl">>,{pkg,<<"ddskerl">>,<<"0.2.1">>},0}]}.
 [
 {pkg_hash,[
- {<<"ddskerl">>, <<"B52CF3D057971E5E54B103196D487B04C78048B728394C1A9FB07A1E5D3C3FD2">>}]},
+ {<<"ddskerl">>, <<"BF9DC11F773278BBE1B1E031731C3E0F0013F582DD60549B6BAA683C961B416C">>}]},
 {pkg_hash_ext,[
- {<<"ddskerl">>, <<"2747BE7D930FEEF03B753F40147AAE440C9D704C7A957D4EFEBCB44740544832">>}]}
+ {<<"ddskerl">>, <<"23A30AD1A875C1AF885D175D2ECF534786867DFCDBF079652110909FFEDCB13B">>}]}
 ].
