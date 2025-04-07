@@ -19,6 +19,9 @@ prometheus_format_test_() ->
         fun test_deregister/1,
         fun test_remove/1,
         fun test_default_value/1,
+        fun test_values_when_empty/1,
+        fun test_values_when_multiple_in_parallel/1,
+        fun test_values_when_non_existing/1,
         fun test_values/1,
         fun test_collector1/1,
         fun test_collector2/1,
@@ -31,15 +34,7 @@ test_merge_logic_when_fetching_value(_) ->
     prometheus_quantile_summary:declare(
         [{name, Name}, {labels, []}, {help, ""}, {error, 0.01}, {bound, 2184}]
     ),
-    % Observe many values
-    Fun = fun() ->
-        [
-            prometheus_quantile_summary:observe(Name, N)
-         || N <- lists:seq(1, 100)
-        ]
-    end,
-    Monitors = [spawn_monitor(Fun) || _ <- lists:seq(1, 1000)],
-    collect_monitors(Monitors),
+    parallel_observe_sequence_of_values(Name),
     Value = prometheus_quantile_summary:value(Name),
     [
         ?_assertMatch(
@@ -84,6 +79,23 @@ test_errors(_) ->
         ?_assertError(
             {invalid_metric_help, 12, "metric help is not a string"},
             prometheus_quantile_summary:new([{name, "qwe"}, {help, 12}])
+        ),
+        ?_assertError(
+            {invalid_bound, 3.141592, "Bound should be a positive integer"},
+            prometheus_quantile_summary:new([
+                {name, "qwe"},
+                {bound, 3.141592},
+                {help, ""}
+            ])
+        ),
+        ?_assertError(
+            {invalid_error, 101, "Error should be a percentage point in (0,100)"},
+            prometheus_quantile_summary:new([
+                {name, "qwe"},
+                {error, 101},
+                {labels, ["qua", "quantile"]},
+                {help, ""}
+            ])
         ),
         %% mf/arity errors
         ?_assertError(
@@ -400,6 +412,47 @@ test_default_value(_) ->
         ?_assertMatch({0, 0, []}, SomethingValue)
     ].
 
+test_values_when_empty(_) ->
+    prometheus_quantile_summary:new([
+        {name, orders_summary},
+        {labels, [department]},
+        {help, "Track orders count/total sum"}
+    ]),
+    [
+        ?_assertMatch(
+            [],
+            lists:sort(prometheus_quantile_summary:values(default, orders_summary))
+        )
+    ].
+
+test_values_when_multiple_in_parallel(_) ->
+    prometheus_quantile_summary:new([
+        {name, orders_summary},
+        {labels, []},
+        {help, "Track orders count/total sum"}
+    ]),
+    parallel_observe_sequence_of_values(orders_summary),
+    [
+        ?_assertMatch(
+            [
+                {[], 100000, 5050000, [
+                    {0.5, 49.90296094906653},
+                    {0.9, 89.13032933635913},
+                    {0.95, 94.64203039019942}
+                ]}
+            ],
+            lists:sort(prometheus_quantile_summary:values(default, orders_summary))
+        )
+    ].
+
+test_values_when_non_existing(_) ->
+    [
+        ?_assertMatch(
+            [],
+            lists:sort(prometheus_quantile_summary:values(default, orders_summary))
+        )
+    ].
+
 test_values(_) ->
     prometheus_quantile_summary:new([
         {name, orders_summary},
@@ -408,7 +461,6 @@ test_values(_) ->
     ]),
     prometheus_quantile_summary:observe(orders_summary, [electronics], 765.5),
     prometheus_quantile_summary:observe(orders_summary, [groceries], 112.3),
-
     [
         ?_assertMatch(
             [
@@ -532,6 +584,17 @@ test_collector3(_) ->
             MFList
         )
     ].
+
+parallel_observe_sequence_of_values(Name) ->
+    % Observe many values
+    Fun = fun() ->
+        [
+            prometheus_quantile_summary:observe(Name, N)
+         || N <- lists:seq(1, 100)
+        ]
+    end,
+    Monitors = [spawn_monitor(Fun) || _ <- lists:seq(1, 1000)],
+    collect_monitors(Monitors).
 
 collect_monitors([]) ->
     ok;

@@ -494,10 +494,10 @@ create_summary(Name, Help, Data) ->
 
 validate_error(Error) when is_number(Error), 0.0 < Error, Error < 100.0 ->
     ok;
-validate_error(_Error) ->
-    erlang:error({invalid_error, "Error should be a percentage point in (0,100)"}).
+validate_error(Error) ->
+    erlang:error({invalid_error, Error, "Error should be a percentage point in (0,100)"}).
 
 validate_bound(Bound) when is_integer(Bound), 0 < Bound ->
     ok;
-validate_bound(_Bound) ->
-    erlang:error({invalid_bound, "Bound should be a positive integer"}).
+validate_bound(Bound) ->
+    erlang:error({invalid_bound, Bound, "Bound should be a positive integer"}).
