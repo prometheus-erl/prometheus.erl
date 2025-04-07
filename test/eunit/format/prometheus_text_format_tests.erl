@@ -176,14 +176,9 @@ test_quantile_summary(_) ->
             "# HELP orders_quantile_summary Track orders count/total sum\n"
             "orders_quantile_summary_count 2\n"
             "orders_quantile_summary_sum 25\n"
-            "orders_quantile_summary{quantile=\"0.0\"} 10\n"
             "orders_quantile_summary{quantile=\"0.5\"} 10.074696689511331\n"
-            "orders_quantile_summary{quantile=\"0.75\"} 15.029881751769699\n"
             "orders_quantile_summary{quantile=\"0.9\"} 15.029881751769699\n"
             "orders_quantile_summary{quantile=\"0.95\"} 15.029881751769699\n"
-            "orders_quantile_summary{quantile=\"0.99\"} 15.029881751769699\n"
-            "orders_quantile_summary{quantile=\"0.999\"} 15.029881751769699\n"
-            "orders_quantile_summary{quantile=\"1.0\"} 15\n"
             "\n"
         >>,
         Format
@@ -200,14 +195,9 @@ test_quantile_dsummary(_) ->
             "# HELP quantile_dsummary qwe\n"
             "quantile_dsummary_count{host=\"123\"} 2\n"
             "quantile_dsummary_sum{host=\"123\"} 4.2\n"
-            "quantile_dsummary{host=\"123\",quantile=\"0.0\"} 1.5\n"
             "quantile_dsummary{host=\"123\",quantile=\"0.5\"} 1.5067630358630386\n"
-            "quantile_dsummary{host=\"123\",quantile=\"0.75\"} 2.6911887203526157\n"
             "quantile_dsummary{host=\"123\",quantile=\"0.9\"} 2.6911887203526157\n"
             "quantile_dsummary{host=\"123\",quantile=\"0.95\"} 2.6911887203526157\n"
-            "quantile_dsummary{host=\"123\",quantile=\"0.99\"} 2.6911887203526157\n"
-            "quantile_dsummary{host=\"123\",quantile=\"0.999\"} 2.6911887203526157\n"
-            "quantile_dsummary{host=\"123\",quantile=\"1.0\"} 2.7\n"
             "\n"
         >>,
         Format

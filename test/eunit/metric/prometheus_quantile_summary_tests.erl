@@ -44,23 +44,13 @@ test_merge_logic_when_fetching_value(_) ->
     [
         ?_assertMatch(
             {100000, _, [
-                {+0.0, Q0},
                 {0.5, Q5},
-                {0.75, Q75},
                 {0.90, Q90},
-                {0.95, Q95},
-                {0.99, Q99},
-                {0.999, Q999},
-                {1.0, Q1}
+                {0.95, Q95}
             ]} when
-                (abs(1 - Q0) =< 1) andalso
-                    (abs(50 - Q5) =< 1) andalso
-                    (abs(75 - Q75) =< 1) andalso
+                (abs(50 - Q5) =< 1) andalso
                     (abs(90 - Q90) =< 1) andalso
-                    (abs(95 - Q95) =< 1) andalso
-                    (abs(99 - Q99) =< 1) andalso
-                    (abs(100 - Q999) =< 1) andalso
-                    (abs(100 - Q1) =< 1),
+                    (abs(95 - Q95) =< 1),
             Value
         )
     ].
@@ -177,6 +167,7 @@ test_observe_quantiles(_) ->
     prometheus_quantile_summary:new([
         {name, orders_summary_q},
         {labels, [department]},
+        {quantiles, [0.0, 0.5, 0.75, 0.90, 0.95, 0.99, 0.999, 1.0]},
         {help, "Track orders quantiles"}
     ]),
     [

@@ -336,7 +336,7 @@ value(Registry, Name, LabelValues) ->
 
 -spec default_quantiles() -> [float()].
 default_quantiles() ->
-    [0.0, 0.5, 0.75, 0.90, 0.95, 0.99, 0.999, 1.0].
+    [0.5, 0.90, 0.95].
 
 -spec values(prometheus_registry:registry(), prometheus_metric:name()) ->
     [{[{atom(), any()}], non_neg_integer(), infinity | number(), [{float(), float()}]}].
