@@ -233,7 +233,7 @@ inc(Name, Value) ->
     inc(default, Name, [], Value).
 
 ?DOC(#{equiv => inc(default, Name, LabelValues, Value)}).
--spec inc(prometheus_metric:name(), prometheus_metric:labels(), non_neg_integer()) -> ok.
+-spec inc(prometheus_metric:name(), prometheus_metric:labels(), number()) -> ok.
 inc(Name, LabelValues, Value) ->
     inc(default, Name, LabelValues, Value).
 
@@ -477,10 +477,12 @@ Raises:
     number() | undefined.
 value(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    DU = prometheus_metric:mf_duration_unit(MF),
     case ets:lookup(?TABLE, {Registry, Name, LabelValues}) of
-        [{_Key, IValue, FValue}] -> prometheus_time:maybe_convert_to_du(DU, sum(IValue, FValue));
-        [] -> undefined
+        [{_Key, IValue, FValue}] ->
+            DU = prometheus_metric:mf_duration_unit(MF),
+            prometheus_time:maybe_convert_to_du(DU, sum(IValue, FValue));
+        [] ->
+            undefined
     end.
 
 -spec values(prometheus_registry:registry(), prometheus_metric:name()) ->
