@@ -69,7 +69,12 @@ stop(_State) ->
 ?DOC(false).
 -spec start() -> ok | {error, term()}.
 start() ->
-    application:start(?MODULE).
+    case application:ensure_all_started(?MODULE) of
+        {ok, _} ->
+            ok;
+        Error ->
+            Error
+    end.
 
 ?DOC(false).
 -spec stop() -> ok | {error, term()}.
