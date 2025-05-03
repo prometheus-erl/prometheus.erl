@@ -416,7 +416,7 @@ loop_through_keys(
     case sets:is_element(Key, Set) of
         true ->
             NextKey = ets:next(?TABLE, CurrentKey),
-            loop_through_keys(Registry, Name, DU, Labels, Set, Acc, NextKey);
+            loop_through_keys(Name, CLabels, Labels, Registry, DU, Set, Acc, NextKey);
         false ->
             {Count, Sum, QNs} = value(Registry, Name, LabelValues),
             Value = prometheus_model_helpers:summary_metric(
@@ -424,7 +424,7 @@ loop_through_keys(
             ),
             NextKey = ets:next(?TABLE, CurrentKey),
             NewSet = sets:add_element(Key, Set),
-            loop_through_keys(Registry, Name, DU, Labels, NewSet, [Value | Acc], NextKey)
+            loop_through_keys(Name, CLabels, Labels, Registry, DU, NewSet, [Value | Acc], NextKey)
     end;
 loop_through_keys(Name, CLabels, Labels, Registry, DU, Set, Acc, CurrentKey) ->
     NextKey = ets:next(?TABLE, CurrentKey),
