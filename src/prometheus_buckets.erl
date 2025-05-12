@@ -156,9 +156,14 @@ linear(_Start, _Step, Count) when Count < 1 ->
 linear(Start, Step, Count) ->
     linear(Start, Step, Count, []).
 
--spec position(buckets(), number()) -> pos_integer().
+?DOC("""
+Find the first index that is greater than or equal to the given value.
+""").
+-spec position(buckets() | tuple(), number()) -> pos_integer().
 position(Buckets, Value) when is_list(Buckets), is_number(Value) ->
-    find_position(Buckets, Value, 0).
+    find_position(Buckets, Value, 0);
+position(Buckets, Value) when is_tuple(Buckets), 1 < tuple_size(Buckets), is_number(Value) ->
+    find_position_in_tuple(Buckets, Value, 1, tuple_size(Buckets)).
 
 ddsketch([], _, Acc) ->
     lists:reverse(Acc);
@@ -187,7 +192,8 @@ try_to_maintain_integer_bounds(Bound) when is_float(Bound) ->
         false -> Bound
     end.
 
--spec find_position(buckets(), number(), non_neg_integer()) -> pos_integer().
+%% Find the first index that is greater than or equal to the given value.
+-spec find_position(buckets(), number(), non_neg_integer()) -> non_neg_integer().
 find_position([], _Value, _Pos) ->
     0;
 find_position([Bound | L], Value, Pos) ->
@@ -196,4 +202,21 @@ find_position([Bound | L], Value, Pos) ->
             Pos;
         false ->
             find_position(L, Value, Pos + 1)
+    end.
+
+%% Find the first index that is greater than or equal to the given value.
+-spec find_position_in_tuple(tuple(), number(), non_neg_integer(), pos_integer()) ->
+    non_neg_integer().
+find_position_in_tuple(Tuple, Value, Low, High) when Low =< High ->
+    Mid = Low + (High - Low) div 2,
+    case element(Mid, Tuple) of
+        Element when Element < Value ->
+            find_position_in_tuple(Tuple, Value, Mid + 1, High);
+        Element when Value =< Element ->
+            find_position_in_tuple(Tuple, Value, Low, Mid - 1)
+    end;
+find_position_in_tuple(Tuple, _Value, Low, _High) ->
+    case tuple_size(Tuple) < Low of
+        true -> 0;
+        false -> Low - 1
     end.
