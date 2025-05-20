@@ -94,9 +94,12 @@ Create Metric Family of `Type`, `Name` and `Help`.
     Type :: atom(),
     Metrics ::
         [prometheus_model:'Metric'()]
+        | #{#{prometheus:label_name() => prometheus:label_value()} => prometheus:value()}
         | prometheus_model:'Metric'()
         | prometheus:metrics(),
     MetricFamily :: prometheus_model:'MetricFamily'().
+create_mf(Name, Help, Type, Metrics) when is_map(Metrics) ->
+    create_mf(Name, Help, Type, maps:to_list(Metrics));
 create_mf(Name, Help, Type, Metrics0) ->
     Metrics = metrics_from_tuples(Type, Metrics0),
     #'MetricFamily'{

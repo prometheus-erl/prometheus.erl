@@ -616,6 +616,41 @@ create_mf_test() ->
             ]
         },
         create_mf(["ga", <<"uge1">>], "help", gauge, {[], g1_value})
+    ),
+
+    ?assertMatch(
+        #'MetricFamily'{
+            name = <<"create_mf_with_empty_map">>,
+            help = "help",
+            type = 'GAUGE',
+            metric = [
+                #'Metric'{
+                    label = [],
+                    gauge = #'Gauge'{value = 0.42}
+                }
+            ]
+        },
+        create_mf(<<"create_mf_with_empty_map">>, "help", gauge, #{#{} => 0.42})
+    ),
+
+    ?assertMatch(
+        #'MetricFamily'{
+            name = <<"create_mf_with_map">>,
+            help = "help",
+            type = 'GAUGE',
+            metric = [
+                #'Metric'{
+                    label = [
+                        #'LabelPair'{
+                            name = <<"l1">>,
+                            value = <<"v1">>
+                        }
+                    ],
+                    gauge = #'Gauge'{value = my_value}
+                }
+            ]
+        },
+        create_mf(<<"create_mf_with_map">>, "help", gauge, #{#{<<"l1">> => <<"v1">>} => my_value})
     ).
 
 collect_metrics(g1, _Data) ->
