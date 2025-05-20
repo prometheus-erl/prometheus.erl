@@ -13,7 +13,7 @@
 -type label_value() :: term().
 -type label() :: {label_name(), label_value()}.
 -type pre_rendered_labels() :: binary().
--type labels() :: [label()] | pre_rendered_labels().
+-type labels() :: [label()] | #{label_name() => label_value()} | pre_rendered_labels().
 -type value() :: float() | integer() | undefined | infinity.
 -type prometheus_boolean() :: boolean() | number() | list() | undefined.
 -type gauge() :: value() | {value()} | {labels(), value()}.
@@ -42,6 +42,7 @@
 -export_type([
     label/0,
     labels/0,
+    label_name/0,
     label_value/0,
     value/0,
     gauge/0,

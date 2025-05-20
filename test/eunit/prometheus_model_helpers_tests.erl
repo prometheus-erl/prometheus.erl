@@ -40,6 +40,7 @@ gauge_metric_test() ->
     LName = <<"label">>,
     LValue = <<"value">>,
     Labels = [{LName, LValue}],
+    LabelsMap = #{LName => LValue},
     ?assertMatch(
         #'Metric'{
             label = NoLabels,
@@ -79,6 +80,32 @@ gauge_metric_test() ->
             }
         ],
         prometheus_model_helpers:gauge_metrics([{Labels, Value}])
+    ),
+    ?assertMatch(
+        #'Metric'{
+            label = [
+                #'LabelPair'{
+                    name = LName,
+                    value = LValue
+                }
+            ],
+            gauge = #'Gauge'{value = Value}
+        },
+        prometheus_model_helpers:gauge_metric(LabelsMap, Value)
+    ),
+    ?assertMatch(
+        [
+            #'Metric'{
+                label = [
+                    #'LabelPair'{
+                        name = LName,
+                        value = LValue
+                    }
+                ],
+                gauge = #'Gauge'{value = Value}
+            }
+        ],
+        prometheus_model_helpers:gauge_metrics([{LabelsMap, Value}])
     ).
 
 untyped_metric_test() ->
@@ -238,6 +265,7 @@ counter_metric_test() ->
     LName = <<"label">>,
     LValue = <<"value">>,
     Labels = [{LName, LValue}],
+    LabelsMap = #{LName => LValue},
     ?assertMatch(
         #'Metric'{
             label = NoLabels,
@@ -277,6 +305,18 @@ counter_metric_test() ->
             }
         ],
         prometheus_model_helpers:counter_metrics([{Labels, Value}])
+    ),
+    ?assertMatch(
+        #'Metric'{
+            label = [
+                #'LabelPair'{
+                    name = LName,
+                    value = LValue
+                }
+            ],
+            counter = #'Counter'{value = Value}
+        },
+        prometheus_model_helpers:counter_metric(LabelsMap, Value)
     ).
 
 summary_metric_test() ->
@@ -286,6 +326,7 @@ summary_metric_test() ->
     LName = <<"label">>,
     LValue = <<"value">>,
     Labels = [{LName, LValue}],
+    LabelsMap = #{LName => LValue},
     ?assertMatch(
         #'Metric'{
             label = NoLabels,
@@ -337,6 +378,21 @@ summary_metric_test() ->
             }
         ],
         prometheus_model_helpers:summary_metrics([{Labels, Count, Sum}])
+    ),
+    ?assertMatch(
+        #'Metric'{
+            label = [
+                #'LabelPair'{
+                    name = LName,
+                    value = LValue
+                }
+            ],
+            summary = #'Summary'{
+                sample_sum = Sum,
+                sample_count = Count
+            }
+        },
+        prometheus_model_helpers:summary_metric(LabelsMap, Count, Sum)
     ).
 
 histogram_metric_test() ->
@@ -347,6 +403,7 @@ histogram_metric_test() ->
     LName = <<"label">>,
     LValue = <<"value">>,
     Labels = [{LName, LValue}],
+    LabelsMap = #{LName => LValue},
     ?assertMatch(
         #'Metric'{
             label = NoLabels,
@@ -470,6 +527,39 @@ histogram_metric_test() ->
             }
         ],
         prometheus_model_helpers:histogram_metrics([{Labels, Buckets, Count, Sum}])
+    ),
+    ?assertMatch(
+        #'Metric'{
+            label = [
+                #'LabelPair'{
+                    name = LName,
+                    value = LValue
+                }
+            ],
+            histogram = #'Histogram'{
+                sample_sum = Sum,
+                sample_count = Count,
+                bucket = [
+                    #'Bucket'{
+                        cumulative_count = 1,
+                        upper_bound = 1
+                    },
+                    #'Bucket'{
+                        cumulative_count = 3,
+                        upper_bound = 2
+                    },
+                    #'Bucket'{
+                        cumulative_count = 4,
+                        upper_bound = 3
+                    },
+                    #'Bucket'{
+                        cumulative_count = 10,
+                        upper_bound = infinity
+                    }
+                ]
+            }
+        },
+        prometheus_model_helpers:histogram_metric(LabelsMap, Buckets, Count, Sum)
     ).
 
 fitler_undefined_metrics_test() ->

@@ -336,8 +336,10 @@ fail with an error.
     Labels :: prometheus:labels().
 label_pairs(B) when is_binary(B) ->
     B;
-label_pairs(Labels) ->
-    lists:map(fun label_pair/1, Labels).
+label_pairs(Labels) when is_list(Labels) ->
+    lists:map(fun label_pair/1, Labels);
+label_pairs(Labels) when is_map(Labels) ->
+    lists:map(fun label_pair/1, maps:to_list(Labels)).
 
 ?DOC("""
 Creates `prometheus_model:`LabelPair'()' from \{Name, Value\} tuple.
