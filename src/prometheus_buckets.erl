@@ -9,7 +9,7 @@
 
 -export([new/0, new/1, position/2, default/0]).
 
--export([exponential/3, linear/3]).
+-export([exponential/3, linear/3, ddsketch/2]).
 
 -type bucket_bound() :: number() | infinity.
 -type buckets() :: [bucket_bound(), ...].
@@ -29,6 +29,7 @@ You can also specify your own buckets if desired instead.
     | default
     | {linear, number(), number(), pos_integer()}
     | {exponential, number(), number(), pos_integer()}
+    | {ddsketch, float(), pos_integer()}
     | buckets().
 
 -export_type([bucket_bound/0, buckets/0, config/0]).
@@ -46,6 +47,8 @@ new(undefined) ->
     erlang:error({no_buckets, undefined});
 new(default) ->
     default() ++ [infinity];
+new({ddsketch, Error, Bound}) ->
+    ddsketch(Error, Bound) ++ [infinity];
 new({linear, Start, Step, Count}) ->
     linear(Start, Step, Count) ++ [infinity];
 new({exponential, Start, Factor, Count}) ->
@@ -85,6 +88,29 @@ Please note these buckets are floats and represent seconds so you'll have to use
 """).
 -spec default() -> buckets().
 default() -> [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10].
+
+?DOC("""
+Creates preallocated buckets according to the DDSketch algorithm.
+
+For example, if you measure microseconds and you expect no operation to take more than a day,
+for a desired error of 1%, 1260 buckets is sufficient.
+
+```erlang
+3> prometheus_buckets:ddsketch(0.01, 1260).
+['TODO']
+```
+
+The function raises `{invalid_value, Value, Message}` error if `Error` isn't positive,
+or if `Bound` is less than or equals to 1.
+""").
+-spec ddsketch(float(), pos_integer()) -> buckets().
+ddsketch(Error, _Bound) when Error < 0; 1 < Error ->
+    erlang:error({invalid_value, Error, "Buckets error should be a valid percentage point"});
+ddsketch(_Error, Bound) when Bound < 1 ->
+    erlang:error({invalid_value, Bound, "Buckets count should be positive"});
+ddsketch(Error, Bound) ->
+    Gamma = (1 + Error) / (1 - Error),
+    ddsketch(lists:seq(0, Bound), Gamma, []).
 
 ?DOC("""
 Creates `Count` buckets, where the lowest bucket has an upper bound of `Start` and each following
@@ -130,9 +156,20 @@ linear(_Start, _Step, Count) when Count < 1 ->
 linear(Start, Step, Count) ->
     linear(Start, Step, Count, []).
 
--spec position(buckets(), number()) -> pos_integer().
+?DOC("""
+Find the first index that is greater than or equal to the given value.
+""").
+-spec position(buckets() | tuple(), number()) -> pos_integer().
 position(Buckets, Value) when is_list(Buckets), is_number(Value) ->
-    find_position(Buckets, Value, 0).
+    find_position(Buckets, Value, 0);
+position(Buckets, Value) when is_tuple(Buckets), 1 < tuple_size(Buckets), is_number(Value) ->
+    find_position_in_tuple(Buckets, Value, 1, tuple_size(Buckets)).
+
+ddsketch([], _, Acc) ->
+    lists:reverse(Acc);
+ddsketch([I | Rest], Gamma, Acc) ->
+    LowerBound = math:pow(Gamma, I),
+    ddsketch(Rest, Gamma, [LowerBound | Acc]).
 
 linear(_Current, _Step, 0, Acc) ->
     lists:reverse(Acc);
@@ -155,7 +192,8 @@ try_to_maintain_integer_bounds(Bound) when is_float(Bound) ->
         false -> Bound
     end.
 
--spec find_position(buckets(), number(), non_neg_integer()) -> pos_integer().
+%% Find the first index that is greater than or equal to the given value.
+-spec find_position(buckets(), number(), non_neg_integer()) -> non_neg_integer().
 find_position([], _Value, _Pos) ->
     0;
 find_position([Bound | L], Value, Pos) ->
@@ -164,4 +202,21 @@ find_position([Bound | L], Value, Pos) ->
             Pos;
         false ->
             find_position(L, Value, Pos + 1)
+    end.
+
+%% Find the first index that is greater than or equal to the given value.
+-spec find_position_in_tuple(tuple(), number(), non_neg_integer(), pos_integer()) ->
+    non_neg_integer().
+find_position_in_tuple(Tuple, Value, Low, High) when Low =< High ->
+    Mid = Low + (High - Low) div 2,
+    case element(Mid, Tuple) of
+        Element when Element < Value ->
+            find_position_in_tuple(Tuple, Value, Mid + 1, High);
+        Element when Value =< Element ->
+            find_position_in_tuple(Tuple, Value, Low, Mid - 1)
+    end;
+find_position_in_tuple(Tuple, _Value, Low, _High) ->
+    case tuple_size(Tuple) < Low of
+        true -> 0;
+        false -> Low - 1
     end.

@@ -37,7 +37,7 @@ create_tables() ->
         {?PROMETHEUS_COUNTER_TABLE, [{write_concurrency, true}]},
         {?PROMETHEUS_GAUGE_TABLE, [{write_concurrency, true}]},
         {?PROMETHEUS_SUMMARY_TABLE, [{write_concurrency, true}]},
-        {?PROMETHEUS_QUANTILE_SUMMARY_TABLE, [{write_concurrency, true}]},
+        {?PROMETHEUS_QUANTILE_SUMMARY_TABLE, [{read_concurrency, true}, {write_concurrency, true}]},
         {?PROMETHEUS_HISTOGRAM_TABLE, [{read_concurrency, true}, {write_concurrency, true}]},
         {?PROMETHEUS_BOOLEAN_TABLE, [{write_concurrency, true}]}
     ],

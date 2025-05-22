@@ -155,14 +155,16 @@ maybe_convert_to_native(DU, Value) ->
         _ -> to_native(Value, DU)
     end.
 
--spec maybe_convert_to_du(duration_unit(), infinity | number()) -> infinity | number().
+-spec maybe_convert_to_du(undefined | duration_unit(), undefined | infinity | number()) ->
+    undefined | infinity | number().
+maybe_convert_to_du(undefined, Value) ->
+    Value;
+maybe_convert_to_du(_, undefined) ->
+    undefined;
 maybe_convert_to_du(_, infinity) ->
     infinity;
 maybe_convert_to_du(DU, Value) ->
-    case DU of
-        undefined -> Value;
-        _ -> from_native(Value, DU)
-    end.
+    from_native(Value, DU).
 
 %%====================================================================
 %% Private Parts
