@@ -429,8 +429,8 @@ test_values(_) ->
     [
         ?_assertEqual(
             [
-                {[{"pool", mongodb}], 10},
-                {[{"pool", postgres}], 13}
+                {[{pool, mongodb}], 10},
+                {[{pool, postgres}], 13}
             ],
             lists:sort(prometheus_gauge:values(default, pool_size))
         )

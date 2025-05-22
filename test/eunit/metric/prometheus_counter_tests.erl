@@ -201,8 +201,8 @@ test_values(_) ->
     [
         ?_assertEqual(
             [
-                {[{"method", get}], 4},
-                {[{"method", post}], 56}
+                {[{method, get}], 4},
+                {[{method, post}], 56}
             ],
             lists:sort(prometheus_counter:values(default, http_requests_total))
         )

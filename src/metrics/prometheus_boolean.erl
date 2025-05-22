@@ -138,8 +138,10 @@ set(Name, Value) ->
     set(default, Name, [], Value).
 
 ?DOC(#{equiv => set(default, Name, LabelValues, Value)}).
--spec set(prometheus_metric:name(), prometheus_metric:labels(), prometheus:prometheus_boolean()) ->
-    ok.
+-spec set(Name, LabelValues, Value) -> ok when
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values(),
+    Value :: prometheus:prometheus_boolean().
 set(Name, LabelValues, Value) ->
     set(default, Name, LabelValues, Value).
 
@@ -167,7 +169,7 @@ Raises:
 -spec set(Registry, Name, LabelValues, Value) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels(),
+    LabelValues :: prometheus_metric:label_values(),
     Value :: prometheus:prometheus_boolean().
 set(Registry, Name, LabelValues, Value) ->
     Value1 = prometheus_model_helpers:boolean_value(Value),
@@ -179,7 +181,7 @@ toggle(Name) ->
     toggle(default, Name, []).
 
 ?DOC(#{equiv => toggle(default, Name, LabelValues)}).
--spec toggle(prometheus_metric:name(), prometheus_metric:labels()) -> ok.
+-spec toggle(prometheus_metric:name(), prometheus_metric:label_values()) -> ok.
 toggle(Name, LabelValues) ->
     toggle(default, Name, LabelValues).
 
@@ -194,8 +196,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if boolean with named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec toggle(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    ok.
+-spec toggle(Registry, Name, LabelValues) -> ok when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 toggle(Registry, Name, LabelValues) ->
     Key = {Registry, Name, LabelValues},
     Spec = {?BOOLEAN_POS, 1, 1, 0},
@@ -213,7 +217,7 @@ remove(Name) ->
     remove(default, Name, []).
 
 ?DOC(#{equiv => remove(default, Name, LabelValues)}).
--spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
+-spec remove(prometheus_metric:name(), prometheus_metric:label_values()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -225,8 +229,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if boolean with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    boolean().
+-spec remove(Registry, Name, LabelValues) -> boolean() when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:remove_labels(?TABLE, Registry, Name, LabelValues).
 
@@ -236,7 +242,7 @@ reset(Name) ->
     reset(default, Name, []).
 
 ?DOC(#{equiv => reset(default, Name, LabelValues)}).
--spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
+-spec reset(prometheus_metric:name(), prometheus_metric:label_values()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -248,8 +254,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if boolean with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    boolean().
+-spec reset(Registry, Name, LabelValues) -> boolean() when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     ets:update_element(?TABLE, {Registry, Name, LabelValues}, {?BOOLEAN_POS, 0}).
@@ -260,7 +268,7 @@ value(Name) ->
     value(default, Name, []).
 
 ?DOC(#{equiv => value(default, Name, LabelValues)}).
--spec value(prometheus_metric:name(), prometheus_metric:labels()) -> boolean() | undefined.
+-spec value(prometheus_metric:name(), prometheus_metric:label_values()) -> boolean() | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -273,8 +281,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if boolean named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    boolean() | undefined.
+-spec value(Registry, Name, LabelValues) -> boolean() | undefined when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 value(Registry, Name, LabelValues) ->
     case ets:lookup(?TABLE, {Registry, Name, LabelValues}) of
         [{_Key, 0}] ->

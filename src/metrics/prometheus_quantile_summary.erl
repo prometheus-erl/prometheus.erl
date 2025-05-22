@@ -176,7 +176,7 @@ observe(Name, Value) ->
     observe(default, Name, [], Value).
 
 ?DOC(#{equiv => observe(default, Name, LabelValues, Value)}).
--spec observe(prometheus_metric:name(), prometheus_metric:labels(), number()) -> ok.
+-spec observe(prometheus_metric:name(), prometheus_metric:label_values(), number()) -> ok.
 observe(Name, LabelValues, Value) ->
     observe(default, Name, LabelValues, Value).
 
@@ -191,7 +191,7 @@ Raises:
 -spec observe(Registry, Name, LabelValues, Value) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels(),
+    LabelValues :: prometheus_metric:label_values(),
     Value :: number().
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     Key = key(Registry, Name, LabelValues),
@@ -213,7 +213,7 @@ observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
 ?DOC(#{equiv => observe_duration(default, Name, LabelValues, Fun)}).
--spec observe_duration(prometheus_metric:name(), prometheus_metric:labels(), fun(() -> term())) ->
+-spec observe_duration(prometheus_metric:name(), prometheus_metric:label_values(), fun(() -> term())) ->
     term().
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
@@ -229,7 +229,7 @@ Raises:
 -spec observe_duration(Registry, Name, LabelValues, Value) -> T when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels(),
+    LabelValues :: prometheus_metric:label_values(),
     Value :: fun(() -> T).
 observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun) ->
     Start = erlang:monotonic_time(),
@@ -247,7 +247,7 @@ remove(Name) ->
     remove(default, Name, []).
 
 ?DOC(#{equiv => remove(default, Name, LabelValues)}).
--spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
+-spec remove(prometheus_metric:name(), prometheus_metric:label_values()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -258,8 +258,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    boolean().
+-spec remove(Registry, Name, LabelValues) -> boolean() when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     case
@@ -280,7 +282,7 @@ reset(Name) ->
     reset(default, Name, []).
 
 ?DOC(#{equiv => reset(default, Name, LabelValues)}).
--spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
+-spec reset(prometheus_metric:name(), prometheus_metric:label_values()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -291,8 +293,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    boolean().
+-spec reset(Registry, Name, LabelValues) -> boolean() when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 reset(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     Configuration = prometheus_metric:mf_data(MF),
@@ -316,7 +320,7 @@ value(Name) ->
     value(default, Name, []).
 
 ?DOC(#{equiv => value(default, Name, LabelValues)}).
--spec value(prometheus_metric:name(), prometheus_metric:labels()) ->
+-spec value(prometheus_metric:name(), prometheus_metric:label_values()) ->
     {integer(), number()} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
@@ -332,8 +336,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    {integer(), number()} | undefined.
+-spec value(Registry, Name, LabelValues) -> {integer(), number()} | undefined when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 value(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     DU = prometheus_metric:mf_duration_unit(MF),

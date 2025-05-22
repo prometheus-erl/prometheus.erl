@@ -350,8 +350,8 @@ test_values(_) ->
     [
         ?_assertMatch(
             [
-                {[{"department", electronics}], 1, 765.5, _},
-                {[{"department", groceries}], 1, 112.3, _}
+                {[{department, electronics}], 1, 765.5, _},
+                {[{department, groceries}], 1, 112.3, _}
             ],
             lists:sort(prometheus_quantile_summary:values(default, orders_summary))
         )

@@ -89,14 +89,14 @@ validate_metric_label_names_test() ->
     ),
 
     ?assertEqual(
-        ["_qwe", "weq123"],
+        [<<"_qwe">>, weq123],
         prometheus_metric_spec:validate_metric_label_names([
             <<"_qwe">>,
-            'weq123'
+            weq123
         ])
     ),
     ?assertEqual(
-        ["_qwe", "weq123"],
+        [<<"_qwe">>, "weq123"],
         prometheus_metric_spec:validate_metric_label_names([
             <<"_qwe">>,
             "weq123"
@@ -114,7 +114,7 @@ validate_metric_help_test() ->
     ),
 
     ?assertEqual("qwe_:qwe", prometheus_metric_spec:validate_metric_help("qwe_:qwe")),
-    ?assertEqual("qwe_:qwe", prometheus_metric_spec:validate_metric_help(<<"qwe_:qwe">>)).
+    ?assertEqual(<<"qwe_:qwe">>, prometheus_metric_spec:validate_metric_help(<<"qwe_:qwe">>)).
 
 constant_labels_test() ->
     ?assertEqual(
