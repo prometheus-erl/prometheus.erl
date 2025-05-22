@@ -3,28 +3,46 @@
 -include_lib("eunit/include/eunit.hrl").
 
 get_value_test() ->
-    Spec = [{name, "qwe"}],
+    Spec1 = [{name, "qwe"}],
+    Spec2 = #{name => "qwe"},
 
     ?assertMatch(
         undefined,
-        prometheus_metric_spec:get_value(labels, Spec)
+        prometheus_metric_spec:get_value(labels, Spec1)
     ),
     ?assertMatch(
         [default],
-        prometheus_metric_spec:get_value(labels, Spec, [default])
+        prometheus_metric_spec:get_value(labels, Spec1, [default])
     ),
 
-    ?assertEqual("qwe", prometheus_metric_spec:get_value(name, Spec)).
+    ?assertMatch(
+        undefined,
+        prometheus_metric_spec:get_value(labels, Spec2)
+    ),
+    ?assertMatch(
+        [default],
+        prometheus_metric_spec:get_value(labels, Spec2, [default])
+    ),
+
+    ?assertEqual("qwe", prometheus_metric_spec:get_value(name, Spec1)),
+    ?assertEqual("qwe", prometheus_metric_spec:get_value(name, Spec2)).
 
 fetch_value_test() ->
-    Spec = [{name, "qwe"}],
+    Spec1 = [{name, "qwe"}],
+    Spec2 = #{name => "qwe"},
 
     ?assertError(
-        {missing_metric_spec_key, labels, Spec},
-        prometheus_metric_spec:fetch_value(labels, Spec)
+        {missing_metric_spec_key, labels, Spec1},
+        prometheus_metric_spec:fetch_value(labels, Spec1)
     ),
 
-    ?assertEqual("qwe", prometheus_metric_spec:fetch_value(name, Spec)).
+    ?assertError(
+        {missing_metric_spec_key, labels, Spec2},
+        prometheus_metric_spec:fetch_value(labels, Spec2)
+    ),
+
+    ?assertEqual("qwe", prometheus_metric_spec:fetch_value(name, Spec1)),
+    ?assertEqual("qwe", prometheus_metric_spec:fetch_value(name, Spec2)).
 
 validate_metric_name_test() ->
     ?assertError(
@@ -71,14 +89,14 @@ validate_metric_label_names_test() ->
     ),
 
     ?assertEqual(
-        ["_qwe", "weq123"],
+        [<<"_qwe">>, weq123],
         prometheus_metric_spec:validate_metric_label_names([
             <<"_qwe">>,
-            'weq123'
+            weq123
         ])
     ),
     ?assertEqual(
-        ["_qwe", "weq123"],
+        [<<"_qwe">>, "weq123"],
         prometheus_metric_spec:validate_metric_label_names([
             <<"_qwe">>,
             "weq123"
@@ -96,7 +114,7 @@ validate_metric_help_test() ->
     ),
 
     ?assertEqual("qwe_:qwe", prometheus_metric_spec:validate_metric_help("qwe_:qwe")),
-    ?assertEqual("qwe_:qwe", prometheus_metric_spec:validate_metric_help(<<"qwe_:qwe">>)).
+    ?assertEqual(<<"qwe_:qwe">>, prometheus_metric_spec:validate_metric_help(<<"qwe_:qwe">>)).
 
 constant_labels_test() ->
     ?assertEqual(

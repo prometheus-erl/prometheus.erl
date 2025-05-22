@@ -220,8 +220,8 @@ test_values(_) ->
     [
         ?_assertEqual(
             [
-                {[{"name", mysql}], true},
-                {[{"name", postgres}], false}
+                {[{name, mysql}], true},
+                {[{name, postgres}], false}
             ],
             lists:sort(prometheus_boolean:values(default, fuse_state))
         )

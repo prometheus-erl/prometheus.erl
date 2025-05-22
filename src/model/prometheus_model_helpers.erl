@@ -94,9 +94,12 @@ Create Metric Family of `Type`, `Name` and `Help`.
     Type :: atom(),
     Metrics ::
         [prometheus_model:'Metric'()]
+        | #{#{prometheus:label_name() => prometheus:label_value()} => prometheus:value()}
         | prometheus_model:'Metric'()
         | prometheus:metrics(),
     MetricFamily :: prometheus_model:'MetricFamily'().
+create_mf(Name, Help, Type, Metrics) when is_map(Metrics) ->
+    create_mf(Name, Help, Type, maps:to_list(Metrics));
 create_mf(Name, Help, Type, Metrics0) ->
     Metrics = metrics_from_tuples(Type, Metrics0),
     #'MetricFamily'{
@@ -336,8 +339,10 @@ fail with an error.
     Labels :: prometheus:labels().
 label_pairs(B) when is_binary(B) ->
     B;
-label_pairs(Labels) ->
-    lists:map(fun label_pair/1, Labels).
+label_pairs(Labels) when is_list(Labels) ->
+    lists:map(fun label_pair/1, Labels);
+label_pairs(Labels) when is_map(Labels) ->
+    lists:map(fun label_pair/1, maps:to_list(Labels)).
 
 ?DOC("""
 Creates `prometheus_model:`LabelPair'()' from \{Name, Value\} tuple.

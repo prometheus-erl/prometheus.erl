@@ -29,7 +29,7 @@ as well as handling metric labels and data.
     remove_labels/4
 ]).
 
--export_type([name/0, value/0, labels/0, help/0, duration_unit/0, spec/0]).
+-export_type([name/0, value/0, labels/0, label_values/0, help/0, duration_unit/0, spec/0]).
 
 ?DOC("Metric name type").
 -type name() :: atom() | binary() | nonempty_string() | iolist().
@@ -60,11 +60,24 @@ as well as handling metric labels and data.
     | histogram_value()
     | undefined.
 
-?DOC("Metric labels type").
+?DOC("Metric label names type").
 -type labels() :: [name()].
 
+?DOC("Metric labels values, tagged or untagged, type").
+-type label_values() :: [prometheus:label_value()].
+
 ?DOC("Metric specification type").
--type spec() :: proplists:proplist().
+-type spec() ::
+    proplists:proplist()
+    | #{
+        name := name(),
+        help := help(),
+        registry => prometheus_registry:registry(),
+        constant_labels => [{atom(), term()}],
+        labels => labels(),
+        data => any(),
+        atom() => _
+    }.
 
 ?DOC("Inserts a new metric function into the table, fails if it already exists.").
 -callback new(Spec :: spec()) -> ok.

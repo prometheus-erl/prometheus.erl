@@ -10,6 +10,7 @@
 ?MODULEDOC(false).
 
 -export([
+    add_value/3,
     get_value/2,
     get_value/3,
     fetch_value/2,
@@ -114,19 +115,36 @@ extract_common_params(Spec) ->
 
 ?DOC(false).
 ?DOC(#{equiv => get_value(Key, Spec, undefined)}).
+-spec add_value(Key :: atom(), Value :: any(), Spec :: prometheus_metric:spec()) -> any().
+add_value(Key, Value, Spec) when is_list(Spec) ->
+    [{Key, Value} | Spec];
+add_value(Key, Value, Spec) when is_map(Spec) ->
+    Spec#{Key => Value}.
+
+?DOC(false).
+?DOC(#{equiv => get_value(Key, Spec, undefined)}).
 -spec get_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> any().
 get_value(Key, Spec) ->
     get_value(Key, Spec, undefined).
 
 ?DOC(false).
 -spec get_value(Key :: atom(), Spec :: prometheus_metric:spec(), Default :: any()) -> any().
-get_value(Key, Spec, Default) ->
-    proplists:get_value(Key, Spec, Default).
+get_value(Key, Spec, Default) when is_list(Spec) ->
+    proplists:get_value(Key, Spec, Default);
+get_value(Key, Spec, Default) when is_map(Spec) ->
+    maps:get(Key, Spec, Default).
 
 ?DOC(false).
 -spec fetch_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> any() | no_return().
-fetch_value(Key, Spec) ->
+fetch_value(Key, Spec) when is_list(Spec) ->
     case proplists:get_value(Key, Spec) of
+        undefined ->
+            erlang:error({missing_metric_spec_key, Key, Spec});
+        Value ->
+            Value
+    end;
+fetch_value(Key, Spec) ->
+    case maps:get(Key, Spec, undefined) of
         undefined ->
             erlang:error({missing_metric_spec_key, Key, Spec});
         Value ->
@@ -139,7 +157,7 @@ fetch_value(Key, Spec) ->
 
 -spec validate_metric_name
     (atom()) -> atom();
-    (list()) -> list();
+    (string()) -> string();
     (binary()) -> binary().
 validate_metric_name(RawName) when is_atom(RawName) ->
     validate_metric_name(RawName, atom_to_list(RawName));
@@ -152,7 +170,7 @@ validate_metric_name(RawName) ->
 
 -spec validate_metric_name
     (atom(), list()) -> atom();
-    (list(), list()) -> list();
+    (string(), list()) -> string();
     (binary(), list()) -> binary().
 validate_metric_name(RawName, ListName) ->
     case io_lib:printable_unicode_list(ListName) of
@@ -172,7 +190,8 @@ validate_metric_name(RawName, ListName) ->
 
 -spec validate_metric_label_names(list()) -> prometheus_metric:labels().
 validate_metric_label_names(RawLabels) when is_list(RawLabels) ->
-    lists:map(fun validate_metric_label_name/1, RawLabels);
+    lists:foreach(fun validate_metric_label_name/1, RawLabels),
+    RawLabels;
 validate_metric_label_names(RawLabels) ->
     erlang:error({invalid_metric_labels, RawLabels, "not list"}).
 
@@ -205,7 +224,7 @@ validate_metric_label_name_content(RawName) ->
 
 -spec validate_metric_help(binary() | string()) -> binary() | string().
 validate_metric_help(RawHelp) when is_binary(RawHelp) ->
-    validate_metric_help(binary_to_list(RawHelp));
+    iolist_to_binary(validate_metric_help(binary_to_list(RawHelp)));
 validate_metric_help(RawHelp) when is_list(RawHelp) ->
     case io_lib:printable_unicode_list(RawHelp) of
         true -> RawHelp;

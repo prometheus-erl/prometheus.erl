@@ -548,7 +548,7 @@ test_values(_) ->
         ?_assertEqual(
             [
                 {
-                    [{"label", label1}],
+                    [{label, label1}],
                     [
                         {0.005, 0},
                         {0.01, 0},
@@ -566,7 +566,7 @@ test_values(_) ->
                     12
                 },
                 {
-                    [{"label", label2}],
+                    [{label, label2}],
                     [
                         {0.005, 0},
                         {0.01, 0},

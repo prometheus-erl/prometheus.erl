@@ -189,7 +189,7 @@ observe(Name, Value) ->
     observe(default, Name, [], Value).
 
 ?DOC(#{equiv => observe(default, Name, LabelValues, Value)}).
--spec observe(prometheus_metric:name(), prometheus_metric:labels(), number()) -> ok.
+-spec observe(prometheus_metric:name(), prometheus_metric:label_values(), number()) -> ok.
 observe(Name, LabelValues, Value) ->
     observe(default, Name, LabelValues, Value).
 
@@ -205,7 +205,7 @@ Raises:
 -spec observe(Registry, Name, LabelValues, Value) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels(),
+    LabelValues :: prometheus_metric:label_values(),
     Value :: number().
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     observe_n(Registry, Name, LabelValues, Value, 1);
@@ -218,7 +218,8 @@ observe_n(Name, Value, Count) ->
     observe_n(default, Name, [], Value, Count).
 
 ?DOC(#{equiv => observe_n(default, Name, LabelValues, Value, Count)}).
--spec observe_n(prometheus_metric:name(), prometheus_metric:labels(), number(), integer()) -> ok.
+-spec observe_n(prometheus_metric:name(), prometheus_metric:label_values(), number(), integer()) ->
+    ok.
 observe_n(Name, LabelValues, Value, Count) ->
     observe_n(default, Name, LabelValues, Value, Count).
 
@@ -235,7 +236,7 @@ Raises:
 -spec observe_n(Registry, Name, LabelValues, Value, Count) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels(),
+    LabelValues :: prometheus_metric:label_values(),
     Value :: number(),
     Count :: integer().
 observe_n(Registry, Name, LabelValues, Value, Count) when is_integer(Value), is_integer(Count) ->
@@ -274,7 +275,7 @@ during the observation.
 -spec pobserve(Registry, Name, LabelValues, Buckets, BucketPos, Value) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels(),
+    LabelValues :: prometheus_metric:label_values(),
     Buckets :: prometheus_buckets:buckets(),
     BucketPos :: integer(),
     Value :: number().
@@ -309,7 +310,7 @@ observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
 ?DOC(#{equiv => observe_duration(default, Name, LabelValues, Fun)}).
--spec observe_duration(prometheus_metric:name(), prometheus_metric:labels(), fun(() -> term())) ->
+-spec observe_duration(prometheus_metric:name(), prometheus_metric:label_values(), fun(() -> term())) ->
     term().
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
@@ -325,7 +326,7 @@ Raises:
 -spec observe_duration(Registry, Name, LabelValues, Fun) -> any() when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels(),
+    LabelValues :: prometheus_metric:label_values(),
     Fun :: fun(() -> any()).
 observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun, 0) ->
     Start = erlang:monotonic_time(),
@@ -343,7 +344,7 @@ remove(Name) ->
     remove(default, Name, []).
 
 ?DOC(#{equiv => remove(default, Name, LabelValues)}).
--spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
+-spec remove(prometheus_metric:name(), prometheus_metric:label_values()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -355,8 +356,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if histogram with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    boolean().
+-spec remove(Registry, Name, LabelValues) -> boolean() when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     List = lists:flatten([
@@ -374,7 +377,7 @@ reset(Name) ->
     reset(default, Name, []).
 
 ?DOC(#{equiv => reset(default, Name, LabelValues)}).
--spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
+-spec reset(prometheus_metric:name(), prometheus_metric:label_values()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -386,8 +389,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if histogram with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    boolean().
+-spec reset(Registry, Name, LabelValues) -> boolean() when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 reset(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     Buckets = prometheus_metric:mf_data(MF),
@@ -414,7 +419,7 @@ value(Name) ->
     value(default, Name, []).
 
 ?DOC(#{equiv => value(default, Name, LabelValues)}).
--spec value(prometheus_metric:name(), prometheus_metric:labels()) ->
+-spec value(prometheus_metric:name(), prometheus_metric:label_values()) ->
     {number(), infinity | number()} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
@@ -431,8 +436,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if histogram named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    {number(), infinity | number()} | undefined.
+-spec value(Registry, Name, LabelValues) -> {number(), infinity | number()} | undefined when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 value(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     RawValues = [
@@ -457,7 +464,7 @@ buckets(Name) ->
     buckets(default, Name, []).
 
 ?DOC(#{equiv => buckets(default, Name, LabelValues)}).
--spec buckets(prometheus_metric:name(), prometheus_metric:labels()) -> [number()].
+-spec buckets(prometheus_metric:name(), prometheus_metric:label_values()) -> [number()].
 buckets(Name, LabelValues) ->
     buckets(default, Name, LabelValues).
 
@@ -465,7 +472,7 @@ buckets(Name, LabelValues) ->
 -spec buckets(Registry, Name, LabelValues) -> [number()] when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels().
+    LabelValues :: prometheus_metric:label_values().
 buckets(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     prometheus_metric:mf_data(MF).

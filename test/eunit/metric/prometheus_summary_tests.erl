@@ -294,8 +294,8 @@ test_values(_) ->
     [
         ?_assertEqual(
             [
-                {[{"department", electronics}], 1, 765.5},
-                {[{"department", groceries}], 1, 112.3}
+                {[{department, electronics}], 1, 765.5},
+                {[{department, groceries}], 1, 112.3}
             ],
             lists:sort(prometheus_summary:values(default, orders_summary))
         )
