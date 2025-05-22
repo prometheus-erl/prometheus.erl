@@ -78,7 +78,7 @@ maybe_create_table(Name, Options) ->
 declare_metric({Metric, Spec}) ->
     declare_metric(Metric, Spec);
 declare_metric({Registry, Metric, Spec}) ->
-    declare_metric(Metric, [{registry, Registry}] ++ Spec).
+    declare_metric(Metric, prometheus_metric_spec:add_value(registry, Registry, Spec)).
 
 declare_metric(counter, Spec) ->
     prometheus_counter:declare(Spec);
