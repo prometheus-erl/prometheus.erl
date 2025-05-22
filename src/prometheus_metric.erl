@@ -64,7 +64,17 @@ as well as handling metric labels and data.
 -type labels() :: [name()].
 
 ?DOC("Metric specification type").
--type spec() :: proplists:proplist().
+-type spec() ::
+    proplists:proplist()
+    | #{
+        name := name(),
+        help := help(),
+        registry => prometheus_registry:registry(),
+        constant_labels => [{atom(), term()}],
+        labels => labels(),
+        data => any(),
+        atom() => _
+    }.
 
 ?DOC("Inserts a new metric function into the table, fails if it already exists.").
 -callback new(Spec :: spec()) -> ok.
