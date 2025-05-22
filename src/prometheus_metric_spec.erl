@@ -157,7 +157,7 @@ fetch_value(Key, Spec) ->
 
 -spec validate_metric_name
     (atom()) -> atom();
-    (list()) -> list();
+    (string()) -> string();
     (binary()) -> binary().
 validate_metric_name(RawName) when is_atom(RawName) ->
     validate_metric_name(RawName, atom_to_list(RawName));
@@ -170,7 +170,7 @@ validate_metric_name(RawName) ->
 
 -spec validate_metric_name
     (atom(), list()) -> atom();
-    (list(), list()) -> list();
+    (string(), list()) -> string();
     (binary(), list()) -> binary().
 validate_metric_name(RawName, ListName) ->
     case io_lib:printable_unicode_list(ListName) of
@@ -190,7 +190,8 @@ validate_metric_name(RawName, ListName) ->
 
 -spec validate_metric_label_names(list()) -> prometheus_metric:labels().
 validate_metric_label_names(RawLabels) when is_list(RawLabels) ->
-    lists:map(fun validate_metric_label_name/1, RawLabels);
+    lists:foreach(fun validate_metric_label_name/1, RawLabels),
+    RawLabels;
 validate_metric_label_names(RawLabels) ->
     erlang:error({invalid_metric_labels, RawLabels, "not list"}).
 
@@ -223,7 +224,7 @@ validate_metric_label_name_content(RawName) ->
 
 -spec validate_metric_help(binary() | string()) -> binary() | string().
 validate_metric_help(RawHelp) when is_binary(RawHelp) ->
-    validate_metric_help(binary_to_list(RawHelp));
+    iolist_to_binary(validate_metric_help(binary_to_list(RawHelp)));
 validate_metric_help(RawHelp) when is_list(RawHelp) ->
     case io_lib:printable_unicode_list(RawHelp) of
         true -> RawHelp;
