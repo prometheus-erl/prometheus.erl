@@ -160,14 +160,14 @@ inc(Name) ->
 If the second argument is a list, equivalent to [inc(default, Name, LabelValues,
 1)](`inc/4`) otherwise equivalent to [inc(default, Name, [], Value)](`inc/4`).
 """).
--spec inc(prometheus_metric:name(), prometheus_metric:labels() | non_neg_integer()) -> ok.
+-spec inc(prometheus_metric:name(), prometheus_metric:label_values() | non_neg_integer()) -> ok.
 inc(Name, LabelValues) when is_list(LabelValues) ->
     inc(default, Name, LabelValues, 1);
 inc(Name, Value) ->
     inc(default, Name, [], Value).
 
 ?DOC(#{equiv => inc(default, Name, LabelValues, Value)}).
--spec inc(prometheus_metric:name(), prometheus_metric:labels(), non_neg_integer()) -> ok.
+-spec inc(prometheus_metric:name(), prometheus_metric:label_values(), non_neg_integer()) -> ok.
 inc(Name, LabelValues, Value) ->
     inc(default, Name, LabelValues, Value).
 
@@ -183,7 +183,7 @@ Raises:
 -spec inc(Registry, Name, LabelValues, Value) -> ok when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:labels(),
+    LabelValues :: prometheus_metric:label_values(),
     Value :: non_neg_integer() | float().
 inc(Registry, Name, LabelValues, Value) when is_integer(Value), Value >= 0 ->
     Key = key(Registry, Name, LabelValues),
@@ -215,7 +215,7 @@ remove(Name) ->
 
 ?DOC(#{equiv => remove(default, Name, LabelValues)}).
 ?DOC("Equivalent to [remove(default, Name, LabelValues)](`remove/3`).").
--spec remove(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
+-spec remove(prometheus_metric:name(), prometheus_metric:label_values()) -> boolean().
 remove(Name, LabelValues) ->
     remove(default, Name, LabelValues).
 
@@ -227,8 +227,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if counter with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec remove(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    boolean().
+-spec remove(Registry, Name, LabelValues) -> boolean() when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     List = [
@@ -246,7 +248,7 @@ reset(Name) ->
     reset(default, Name, []).
 
 ?DOC(#{equiv => reset(default, Name, LabelValues)}).
--spec reset(prometheus_metric:name(), prometheus_metric:labels()) -> boolean().
+-spec reset(prometheus_metric:name(), prometheus_metric:label_values()) -> boolean().
 reset(Name, LabelValues) ->
     reset(default, Name, LabelValues).
 
@@ -258,8 +260,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if counter with name `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec reset(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    boolean().
+-spec reset(Registry, Name, LabelValues) -> boolean() when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 reset(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     Spec = [{?ISUM_POS, 0}, {?FSUM_POS, 0}],
@@ -279,7 +283,7 @@ value(Name) ->
     value(default, Name, []).
 
 ?DOC(#{equiv => value(default, Name, LabelValues)}).
--spec value(prometheus_metric:name(), prometheus_metric:labels()) -> number() | undefined.
+-spec value(prometheus_metric:name(), prometheus_metric:label_values()) -> number() | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -292,8 +296,10 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if counter named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec value(prometheus_registry:registry(), prometheus_metric:name(), prometheus_metric:labels()) ->
-    number() | undefined.
+-spec value(Registry, Name, LabelValues) -> number() | undefined when
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values().
 value(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     Spec = [{{{Registry, Name, LabelValues, '_'}, '$1', '$2'}, [], [{'+', '$1', '$2'}]}],
