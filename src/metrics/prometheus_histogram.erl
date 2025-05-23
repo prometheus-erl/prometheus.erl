@@ -241,25 +241,23 @@ Raises:
     Count :: integer().
 observe_n(Registry, Name, LabelValues, Value, Count) when is_integer(Value), is_integer(Count) ->
     Key = key(Registry, Name, LabelValues),
-    try ets:lookup_element(?TABLE, Key, ?BOUNDS_POS) of
-        Buckets ->
+    case ets:lookup_element(?TABLE, Key, ?BOUNDS_POS, undefined) of
+        undefined ->
+            insert_metric(Registry, Name, LabelValues, Value, Count, fun observe_n/5);
+        Buckets when is_tuple(Buckets) ->
             BucketPosition = prometheus_buckets:position(Buckets, Value),
             Spec = [{?ISUM_POS, Value * Count}, {?BUCKETS_START + BucketPosition, Count}],
             ets:update_counter(?TABLE, Key, Spec)
-    catch
-        error:badarg ->
-            insert_metric(Registry, Name, LabelValues, Value, Count, fun observe_n/5)
     end,
     ok;
 observe_n(Registry, Name, LabelValues, Value, Count) when is_float(Value), is_integer(Count) ->
     Key = key(Registry, Name, LabelValues),
-    try ets:lookup_element(?TABLE, Key, ?BOUNDS_POS) of
-        Buckets ->
+    case ets:lookup_element(?TABLE, Key, ?BOUNDS_POS, undefined) of
+        undefined ->
+            insert_metric(Registry, Name, LabelValues, Value, Count, fun observe_n/5);
+        Buckets when is_tuple(Buckets) ->
             BucketPosition = prometheus_buckets:position(Buckets, Value),
             fobserve_impl(Key, Buckets, BucketPosition, Value, Count)
-    catch
-        error:badarg ->
-            insert_metric(Registry, Name, LabelValues, Value, Count, fun observe_n/5)
     end;
 observe_n(_Registry, _Name, _LabelValues, Value, Count) when is_number(Value) ->
     erlang:error({invalid_count, Count, "observe_n accepts only integer counts"});
@@ -305,13 +303,15 @@ pobserve(_Registry, _Name, _LabelValues, _Buckets, _Pos, Value) ->
     erlang:error({invalid_value, Value, "pobserve accepts only numbers"}).
 
 ?DOC(#{equiv => observe_duration(default, Name, [], Fun)}).
--spec observe_duration(prometheus_metric:name(), fun(() -> term())) -> term().
+-spec observe_duration(prometheus_metric:name(), fun(() -> dynamic())) -> dynamic().
 observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
 ?DOC(#{equiv => observe_duration(default, Name, LabelValues, Fun)}).
--spec observe_duration(prometheus_metric:name(), prometheus_metric:label_values(), fun(() -> term())) ->
-    term().
+-spec observe_duration(Name, LabelValues, Fun) -> dynamic() when
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values(),
+    Fun :: fun(() -> dynamic()).
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
 
@@ -323,11 +323,11 @@ Raises:
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 * `{invalid_value, Value, Message}` if `Fun` isn't a function.
 """).
--spec observe_duration(Registry, Name, LabelValues, Fun) -> any() when
+-spec observe_duration(Registry, Name, LabelValues, Fun) -> dynamic() when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
     LabelValues :: prometheus_metric:label_values(),
-    Fun :: fun(() -> any()).
+    Fun :: fun(() -> dynamic()).
 observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun, 0) ->
     Start = erlang:monotonic_time(),
     try
