@@ -11,11 +11,11 @@ on:
 
 jobs:
   test:
-    name: OTP ${{matrix.otp}}
+    name: OTP ${{matrix.otp}} - rebar3 ${{matrix.rebar3}}
     strategy:
       matrix:
         otp: ['28', '27', '26']
-        rebar3: ['3.24']
+        rebar3: ['3.24', '3.25']
     runs-on: 'ubuntu-24.04'
     env:
       OTPVER: ${{ matrix.otp }}
