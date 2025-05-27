@@ -2,6 +2,26 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+find_position_test_() ->
+    Buckets = prometheus_buckets:linear(1, 1, 10),
+    [
+        ?_assertEqual(0, prometheus_buckets:position(Buckets, 100))
+        | [
+            ?_assertEqual(N - 1, prometheus_buckets:position(Buckets, N))
+         || N <- lists:seq(1, 10)
+        ]
+    ].
+
+find_position_in_tuple_test_() ->
+    TupleBuckets = list_to_tuple(prometheus_buckets:linear(1, 1, 10)),
+    [
+        ?_assertEqual(0, prometheus_buckets:position(TupleBuckets, 100))
+        | [
+            ?_assertEqual(N - 1, prometheus_buckets:position(TupleBuckets, N))
+         || N <- lists:seq(1, 10)
+        ]
+    ].
+
 linear_errors_test() ->
     ?assertError(
         {invalid_value, 0, "Buckets count should be positive"},

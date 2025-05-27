@@ -185,13 +185,15 @@ observe(_Registry, _Name, _LabelValues, Value) ->
     erlang:error({invalid_value, Value, "observe accepts only numbers"}).
 
 ?DOC(#{equiv => observe_duration(default, Name, [], Fun)}).
--spec observe_duration(prometheus_metric:name(), fun(() -> term())) -> term().
+-spec observe_duration(prometheus_metric:name(), fun(() -> dynamic())) -> dynamic().
 observe_duration(Name, Fun) ->
     observe_duration(default, Name, [], Fun).
 
 ?DOC(#{equiv => observe_duration(default, Name, LabelValues, Fun)}).
--spec observe_duration(prometheus_metric:name(), prometheus_metric:label_values(), fun(() -> term())) ->
-    term().
+-spec observe_duration(Name, LabelValues, Value) -> dynamic() when
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values(),
+    Value :: fun(() -> dynamic()).
 observe_duration(Name, LabelValues, Fun) ->
     observe_duration(default, Name, LabelValues, Fun).
 
@@ -203,11 +205,11 @@ Raises:
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 * `{invalid_value, Value, Message}` if `Fun` isn't a function.
 """).
--spec observe_duration(Registry, Name, LabelValues, Value) -> T when
+-spec observe_duration(Registry, Name, LabelValues, Value) -> dynamic() when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
     LabelValues :: prometheus_metric:label_values(),
-    Value :: fun(() -> T).
+    Value :: fun(() -> dynamic()).
 observe_duration(Registry, Name, LabelValues, Fun) when is_function(Fun) ->
     Start = erlang:monotonic_time(),
     try
@@ -346,7 +348,7 @@ default_quantiles() ->
     [0.5, 0.90, 0.95].
 
 -spec values(prometheus_registry:registry(), prometheus_metric:name()) ->
-    [{[{atom(), any()}], non_neg_integer(), infinity | number(), [{float(), float()}]}].
+    [{[{atom(), dynamic()}], non_neg_integer(), infinity | number(), [{float(), float()}]}].
 values(Registry, Name) ->
     case prometheus_metric:check_mf_exists(?TABLE, Registry, Name) of
         false ->

@@ -9,8 +9,8 @@
 
 -behaviour(application).
 
--type label_name() :: term().
--type label_value() :: term().
+-type label_name() :: dynamic().
+-type label_value() :: dynamic().
 -type label() :: {label_name(), label_value()}.
 -type pre_rendered_labels() :: binary().
 -type labels() :: [label()] | #{label_name() => label_value()} | pre_rendered_labels().
@@ -59,16 +59,16 @@
 -export([start/2, stop/1]).
 -export([start/0, stop/0]).
 
--spec start(application:start_type(), term()) -> supervisor:startlink_ret().
+-spec start(application:start_type(), dynamic()) -> supervisor:startlink_ret().
 start(_StartType, _StartArgs) ->
     prometheus_sup:start_link().
 
--spec stop(term()) -> ok.
+-spec stop(dynamic()) -> ok.
 stop(_State) ->
     ok.
 
 ?DOC(false).
--spec start() -> ok | {error, term()}.
+-spec start() -> ok | {error, dynamic()}.
 start() ->
     case application:ensure_all_started(?MODULE) of
         {ok, _} ->
@@ -78,6 +78,6 @@ start() ->
     end.
 
 ?DOC(false).
--spec stop() -> ok | {error, term()}.
+-spec stop() -> ok | {error, dynamic()}.
 stop() ->
     application:stop(?MODULE).

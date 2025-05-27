@@ -75,7 +75,7 @@ as well as handling metric labels and data.
         registry => prometheus_registry:registry(),
         constant_labels => [{atom(), term()}],
         labels => labels(),
-        data => any(),
+        data => term(),
         atom() => _
     }.
 
@@ -86,7 +86,7 @@ as well as handling metric labels and data.
 -callback declare(Spec :: spec()) -> boolean().
 
 ?DOC("Sets the default metric function for the module.").
--callback set_default(Registry, Name) -> any() when
+-callback set_default(Registry, Name) -> dynamic() when
     Registry :: prometheus_registry:registry(),
     Name :: name().
 
@@ -180,7 +180,7 @@ deregister_mf(Table, Registry, Name) ->
     end.
 
 ?DOC(false).
--spec check_mf_exists(Table, Registry, Name, LabelValues) -> any() | no_return() when
+-spec check_mf_exists(Table, Registry, Name, LabelValues) -> dynamic() | no_return() when
     Table :: atom(),
     Registry :: prometheus_registry:registry(),
     Name :: name(),
@@ -213,28 +213,28 @@ check_mf_exists(Table, Registry, Name) ->
     end.
 
 ?DOC(false).
--spec mf_labels(tuple()) -> any().
+-spec mf_labels(tuple()) -> dynamic().
 mf_labels(MF) ->
     {Labels, _} = element(2, MF),
     Labels.
 
 ?DOC(false).
--spec mf_constant_labels(tuple()) -> any().
+-spec mf_constant_labels(tuple()) -> dynamic().
 mf_constant_labels(MF) ->
     element(3, MF).
 
 ?DOC(false).
--spec mf_duration_unit(tuple()) -> any().
+-spec mf_duration_unit(tuple()) -> dynamic().
 mf_duration_unit(MF) ->
     element(4, MF).
 
 ?DOC(false).
--spec mf_data(tuple()) -> any().
+-spec mf_data(tuple()) -> dynamic().
 mf_data(MF) ->
     element(5, MF).
 
 ?DOC(false).
--spec metrics(term(), term()) -> any().
+-spec metrics(ets:table(), prometheus_registry:registry()) -> dynamic().
 metrics(Table, Registry) ->
     ets:match(Table, {{Registry, mf, '$1'}, '$2', '$3', '$4', '$5'}).
 

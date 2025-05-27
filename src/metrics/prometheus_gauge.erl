@@ -334,13 +334,15 @@ set_to_current_time(Registry, Name, LabelValues) ->
     set(Registry, Name, LabelValues, os:system_time(seconds)).
 
 ?DOC(#{equiv => track_inprogress(default, Name, [], Fun)}).
--spec track_inprogress(prometheus_metric:name(), fun(() -> any())) -> any().
+-spec track_inprogress(prometheus_metric:name(), fun(() -> dynamic())) -> dynamic().
 track_inprogress(Name, Fun) ->
     track_inprogress(default, Name, [], Fun).
 
 ?DOC(#{equiv => track_inprogress(default, Name, LabelValues, Fun)}).
--spec track_inprogress(prometheus_metric:name(), prometheus_metric:label_values(), fun(() -> any())) ->
-    any().
+-spec track_inprogress(Name, LabelValues, Fun) -> dynamic() when
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values(),
+    Fun :: fun(() -> dynamic()).
 track_inprogress(Name, LabelValues, Fun) ->
     track_inprogress(default, Name, LabelValues, Fun).
 
@@ -354,11 +356,11 @@ Raises:
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 * `{invalid_value, Value, Message}` if `Fun` isn't a function.
 """).
--spec track_inprogress(Registry, Name, LabelValues, Fun) -> any() when
+-spec track_inprogress(Registry, Name, LabelValues, Fun) -> dynamic() when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
     LabelValues :: prometheus_metric:label_values(),
-    Fun :: fun(() -> any()).
+    Fun :: fun(() -> dynamic()).
 track_inprogress(Registry, Name, LabelValues, Fun) when is_function(Fun, 0) ->
     inc(Registry, Name, LabelValues, 1),
     try
@@ -370,13 +372,15 @@ track_inprogress(_Registry, _Name, _LabelValues, Fun) ->
     erlang:error({invalid_value, Fun, "track_inprogress accepts only functions"}).
 
 ?DOC(#{equiv => set_duration(default, Name, [], Fun)}).
--spec set_duration(prometheus_metric:name(), fun(() -> any())) -> any().
+-spec set_duration(prometheus_metric:name(), fun(() -> dynamic())) -> dynamic().
 set_duration(Name, Fun) ->
     set_duration(default, Name, [], Fun).
 
 ?DOC(#{equiv => set_duration(default, Name, LabelValues, Fun)}).
--spec set_duration(prometheus_metric:name(), prometheus_metric:label_values(), fun(() -> any())) ->
-    any().
+-spec set_duration(Name, LabelValues, Fun) -> dynamic() when
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values(),
+    Fun :: fun(() -> dynamic()).
 set_duration(Name, LabelValues, Fun) ->
     set_duration(default, Name, LabelValues, Fun).
 
@@ -390,11 +394,11 @@ Raises:
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 * `{invalid_value, Value, Message}` if `Fun` isn't a function.
 """).
--spec set_duration(Registry, Name, LabelValues, Fun) -> any() when
+-spec set_duration(Registry, Name, LabelValues, Fun) -> dynamic() when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
     LabelValues :: prometheus_metric:label_values(),
-    Fun :: fun(() -> any()).
+    Fun :: fun(() -> dynamic()).
 set_duration(Registry, Name, LabelValues, Fun) when is_function(Fun, 0) ->
     Start = erlang:monotonic_time(),
     try

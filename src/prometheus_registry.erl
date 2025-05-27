@@ -43,7 +43,7 @@ from batch jobs.
 -type registry() :: atom().
 
 -type collect_callback() ::
-    fun((registry(), prometheus_collector:collector()) -> any()).
+    fun((registry(), prometheus_collector:collector()) -> dynamic()).
 
 -define(TABLE, ?PROMETHEUS_REGISTRY_TABLE).
 
