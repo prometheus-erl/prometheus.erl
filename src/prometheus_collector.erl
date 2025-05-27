@@ -91,10 +91,10 @@ create_gauge(Name, Help, Data) ->
 -type collector() :: atom().
 
 ?DOC("Data associated with a collector").
--type data() :: any().
+-type data() :: dynamic().
 
 ?DOC("Callback for `collect_mf/3`").
--type collect_mf_callback() :: fun((prometheus_model:'MetricFamily'()) -> any()).
+-type collect_mf_callback() :: fun((prometheus_model:'MetricFamily'()) -> dynamic()).
 
 ?DOC("Should call `Callback` for each `MetricFamily` of this collector").
 -callback collect_mf(Registry, Callback) -> ok when

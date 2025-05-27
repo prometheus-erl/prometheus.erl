@@ -43,7 +43,7 @@ does_module_implement_behaviour(Module, Behaviour) ->
     Behaviours = [Atts || {N, Atts} <- Attributes, (N =:= behaviour orelse N =:= behavior)],
     lists:member(Behaviour, lists:flatten(Behaviours)).
 
--spec module_attributes(atom()) -> [{atom(), any()}] | [].
+-spec module_attributes(atom()) -> [{atom(), term()}] | [].
 module_attributes(Module) ->
     try
         Module:module_info(attributes)

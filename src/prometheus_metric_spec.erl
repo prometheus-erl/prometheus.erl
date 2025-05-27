@@ -55,7 +55,7 @@ help(Spec) ->
     validate_metric_help(Help).
 
 ?DOC(false).
--spec data(Spec :: prometheus_metric:spec()) -> any().
+-spec data(Spec :: prometheus_metric:spec()) -> dynamic().
 data(Spec) ->
     get_value(data, Spec).
 
@@ -102,7 +102,7 @@ duration_unit_from_spec(Spec) ->
     Help :: prometheus_metric:help(),
     CallTimeout :: [{atom(), term()}],
     DurationUnit :: prometheus_time:maybe_duration_unit(),
-    Data :: any().
+    Data :: dynamic().
 extract_common_params(Spec) ->
     Registry = registry(Spec),
     Name = name(Spec),
@@ -115,7 +115,7 @@ extract_common_params(Spec) ->
 
 ?DOC(false).
 ?DOC(#{equiv => get_value(Key, Spec, undefined)}).
--spec add_value(Key :: atom(), Value :: any(), Spec :: prometheus_metric:spec()) -> any().
+-spec add_value(Key :: atom(), Value :: dynamic(), Spec :: prometheus_metric:spec()) -> term().
 add_value(Key, Value, Spec) when is_list(Spec) ->
     [{Key, Value} | Spec];
 add_value(Key, Value, Spec) when is_map(Spec) ->
@@ -123,19 +123,19 @@ add_value(Key, Value, Spec) when is_map(Spec) ->
 
 ?DOC(false).
 ?DOC(#{equiv => get_value(Key, Spec, undefined)}).
--spec get_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> any().
+-spec get_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> term().
 get_value(Key, Spec) ->
     get_value(Key, Spec, undefined).
 
 ?DOC(false).
--spec get_value(Key :: atom(), Spec :: prometheus_metric:spec(), Default :: any()) -> any().
+-spec get_value(Key :: atom(), Spec :: prometheus_metric:spec(), Default :: dynamic()) -> dynamic().
 get_value(Key, Spec, Default) when is_list(Spec) ->
     proplists:get_value(Key, Spec, Default);
 get_value(Key, Spec, Default) when is_map(Spec) ->
     maps:get(Key, Spec, Default).
 
 ?DOC(false).
--spec fetch_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> any() | no_return().
+-spec fetch_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> dynamic() | no_return().
 fetch_value(Key, Spec) when is_list(Spec) ->
     case proplists:get_value(Key, Spec) of
         undefined ->
