@@ -335,7 +335,11 @@ value(Registry, Name, LabelValues) ->
                     Sum = ddskerl_ets:sum(?TABLE, Total),
                     DuSum = prometheus_time:maybe_convert_to_du(DU, Sum),
                     Values = [
-                        {QN, ddskerl_ets:quantile(?TABLE, Total, QN)}
+                        {QN,
+                            prometheus_time:maybe_convert_to_du(
+                                DU,
+                                ddskerl_ets:quantile(?TABLE, Total, QN)
+                            )}
                      || QN <- QNs
                     ],
                     ets:delete(?TABLE, Total),
