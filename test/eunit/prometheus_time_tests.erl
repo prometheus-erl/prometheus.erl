@@ -42,28 +42,28 @@ validate_duration_unit_test() ->
 
 from_native_test() ->
     NativeInUS = erlang:convert_time_unit(1, microsecond, native),
-    ?assertEqual(2.5, prometheus_time:from_native(2.5 * NativeInUS, microseconds)),
-    ?assertEqual(2.6, prometheus_time:from_native(2.6 * 1000 * NativeInUS, milliseconds)),
-    ?assertEqual(2.23, prometheus_time:from_native(2.23 * 1000000 * NativeInUS, seconds)),
+    ?assertEqual(2.5, prometheus_time:from_native(microseconds, 2.5 * NativeInUS)),
+    ?assertEqual(2.6, prometheus_time:from_native(milliseconds, 2.6 * 1000 * NativeInUS)),
+    ?assertEqual(2.23, prometheus_time:from_native(seconds, 2.23 * 1000000 * NativeInUS)),
     ?assertEqual(
         3.4,
         prometheus_time:from_native(
-            3.4 * 60 * 1000000 * NativeInUS,
-            minutes
+            minutes,
+            3.4 * 60 * 1000000 * NativeInUS
         )
     ),
     ?assertEqual(
         0.4,
         prometheus_time:from_native(
-            0.4 * 3600 * 1000000 * NativeInUS,
-            hours
+            hours,
+            0.4 * 3600 * 1000000 * NativeInUS
         )
     ),
     ?assertEqual(
         0.1,
         prometheus_time:from_native(
-            0.1 * 86400 * 1000000 * NativeInUS,
-            days
+            days,
+            0.1 * 86400 * 1000000 * NativeInUS
         )
     ).
 
