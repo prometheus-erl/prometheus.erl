@@ -1,8 +1,8 @@
 {"1.2.0",
-[{<<"quantile_estimator">>,{pkg,<<"quantile_estimator">>,<<"1.0.2">>},0}]}.
+[{<<"ddskerl">>,{pkg,<<"ddskerl">>,<<"0.4.1">>},0}]}.
 [
 {pkg_hash,[
- {<<"quantile_estimator">>, <<"ECD281D40110FDD9BA62685531E4435E0839A52FD1058DA5564F1763E4642EF7">>}]},
+ {<<"ddskerl">>, <<"F0329E1F8FD3C6209F1645B540F6D4FC14C60B897B05E65B8A4122A362EF019A">>}]},
 {pkg_hash_ext,[
- {<<"quantile_estimator">>, <<"DB404793D6384995A1AC6DD973E2CEE5BE9FCC128765BDBA53D87C564E296B64">>}]}
+ {<<"ddskerl">>, <<"0B68A1E53AF4CCF5F43D70F8EABA1F031388B3FCBD6405FA0CDF849FB47F1811">>}]}
 ].

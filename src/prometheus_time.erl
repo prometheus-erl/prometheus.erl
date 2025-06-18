@@ -164,7 +164,7 @@ maybe_convert_to_du(_, undefined) ->
 maybe_convert_to_du(_, infinity) ->
     infinity;
 maybe_convert_to_du(DU, Value) ->
-    from_native(Value, DU).
+    from_native(DU, Value).
 
 %%====================================================================
 %% Private Parts
@@ -181,23 +181,23 @@ duration_unit_from_string(_, []) ->
 from_native(Value) ->
     erlang:convert_time_unit(trunc(Value), native, nanosecond).
 
--spec from_native(number(), duration_unit()) -> number().
-from_native(Value, microseconds) ->
+-spec from_native(duration_unit(), number()) -> number().
+from_native(microseconds, Value) ->
     Nanoseconds = from_native(Value),
     Nanoseconds / 1000;
-from_native(Value, milliseconds) ->
+from_native(milliseconds, Value) ->
     Nanoseconds = from_native(Value),
     Nanoseconds / 1000000;
-from_native(Value, seconds) ->
+from_native(seconds, Value) ->
     Nanoseconds = from_native(Value),
     Nanoseconds / 1000000000;
-from_native(Value, minutes) ->
+from_native(minutes, Value) ->
     Nanoseconds = from_native(Value),
     Nanoseconds / 60000000000;
-from_native(Value, hours) ->
+from_native(hours, Value) ->
     Nanoseconds = from_native(Value),
     Nanoseconds / 3600000000000;
-from_native(Value, days) ->
+from_native(days, Value) ->
     Nanoseconds = from_native(Value),
     Nanoseconds / 86400000000000.
 

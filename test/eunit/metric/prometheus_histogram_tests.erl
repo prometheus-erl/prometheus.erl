@@ -222,10 +222,31 @@ test_buckets(_) ->
     ]),
     ExpBuckets = prometheus_histogram:buckets("exp_buckets"),
 
+    prometheus_histogram:declare([
+        {name, "ddsketch_buckets"},
+        {help, ""},
+        {buckets, {ddsketch, 0.01, 10}}
+    ]),
+    DDSketchBuckets = prometheus_histogram:buckets("ddsketch_buckets"),
+
     CustomBuckets = prometheus_histogram:buckets(
         http_request_duration_milliseconds,
         [method]
     ),
+    ExpectedDDSketchBuckets = [
+        1.0,
+        1.02020202020202,
+        1.040812162024283,
+        1.0618386703480058,
+        1.0832899566176624,
+        1.105174602205898,
+        1.127501361846421,
+        1.1502791671362476,
+        1.1735171301086968,
+        1.1972245468785696,
+        1.2214109013609646,
+        infinity
+    ],
     [
         ?_assertEqual(
             prometheus_buckets:default() ++ [infinity],
@@ -237,7 +258,8 @@ test_buckets(_) ->
         ),
         ?_assertEqual([100, 300, 500, 750, 1000, infinity], CustomBuckets),
         ?_assertEqual([-15, -10, -5, 0, 5, 10, infinity], LinearBuckets),
-        ?_assertEqual([100, 120, 144, infinity], ExpBuckets)
+        ?_assertEqual([100, 120, 144, infinity], ExpBuckets),
+        ?_assertEqual(ExpectedDDSketchBuckets, DDSketchBuckets)
     ].
 
 test_observe(_) ->
