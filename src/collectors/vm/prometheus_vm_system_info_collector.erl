@@ -222,12 +222,12 @@ metric_enabled(Name, Metrics) ->
 
 collect_allocator_metrics() ->
     Metrics = lists:flatten([
-        collect_allocator_metrics_(Alloc, Instance, Info)
+        collect_allocator_metrics_1(Alloc, Instance, Info)
      || {{Alloc, Instance}, Info} <- allocators()
     ]),
     prometheus_model_helpers:gauge_metrics(Metrics).
 
-collect_allocator_metrics_(Alloc, Instance, Info) ->
+collect_allocator_metrics_1(Alloc, Instance, Info) ->
     [
         [
             allocator_metric(Alloc, Instance, Kind, Key, KindInfo)

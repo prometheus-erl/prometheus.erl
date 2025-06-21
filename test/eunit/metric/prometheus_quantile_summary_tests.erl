@@ -478,4 +478,6 @@ collect_monitors([{Pid, Ref} | Monitors]) ->
         {'DOWN', Ref, process, Pid, Reason} ->
             ?assertEqual(normal, Reason),
             collect_monitors(Monitors)
+    after 5000 ->
+        ct:fail("Tasks never finished in a reasonable amount of time")
     end.
