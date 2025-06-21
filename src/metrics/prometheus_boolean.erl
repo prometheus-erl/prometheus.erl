@@ -173,7 +173,7 @@ Raises:
     Value :: prometheus:prometheus_boolean().
 set(Registry, Name, LabelValues, Value) ->
     Value1 = prometheus_model_helpers:boolean_value(Value),
-    set_(Registry, Name, LabelValues, Value1).
+    set_1(Registry, Name, LabelValues, Value1).
 
 ?DOC(#{equiv => toggle(default, Name, [])}).
 -spec toggle(prometheus_metric:name()) -> ok.
@@ -348,12 +348,12 @@ collect_metrics(Name, {CLabels, Labels, Registry}) ->
 deregister_select(Registry, Name) ->
     [{{{Registry, Name, '_'}, '_'}, [], [true]}].
 
-set_(Registry, Name, LabelValues, Value) ->
+set_1(Registry, Name, LabelValues, Value) ->
     Key = {Registry, Name, LabelValues},
     Spec = {?BOOLEAN_POS, Value},
     case ets:update_element(?TABLE, Key, Spec) of
         false ->
-            insert_metric(Registry, Name, LabelValues, Value, fun set_/4);
+            insert_metric(Registry, Name, LabelValues, Value, fun set_1/4);
         true ->
             ok
     end.
