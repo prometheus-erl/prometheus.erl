@@ -222,12 +222,12 @@ metric_enabled(Name, Metrics) ->
 
 collect_allocator_metrics() ->
     Metrics = lists:flatten([
-        collect_allocator_metrics_(Alloc, Instance, Info)
+        collect_allocator_metrics_1(Alloc, Instance, Info)
      || {{Alloc, Instance}, Info} <- allocators()
     ]),
     prometheus_model_helpers:gauge_metrics(Metrics).
 
-collect_allocator_metrics_(Alloc, Instance, Info) ->
+collect_allocator_metrics_1(Alloc, Instance, Info) ->
     [
         [
             allocator_metric(Alloc, Instance, Kind, Key, KindInfo)
@@ -248,17 +248,21 @@ allocator_metric(Alloc, Instance, Kind, Key, Values) ->
     }.
 
 %% Originally copied from recon_alloc.
+%% versions is deleted because never really having come across a case where it was useful to know.
 allocators() ->
     Allocators = erlang:system_info(alloc_util_allocators),
-    %% versions is deleted in order to allow the use of the orddict api,
-    %% and never really having come across a case where it was useful to know.
-    [
-        {{A, N}, lists:sort(proplists:delete(versions, Props))}
-     || A <- Allocators,
-        Allocs <- [erlang:system_info({allocator, A})],
-        Allocs =/= false,
-        {_, N, Props} <- Allocs
-    ].
+    lists:flatmap(fun allocator/1, Allocators).
+
+allocator(A) ->
+    case erlang:system_info({allocator, A}) of
+        false ->
+            [];
+        Allocs ->
+            [
+                {{A, N}, lists:sort(proplists:delete(versions, Props))}
+             || {_, N, Props} <- Allocs
+            ]
+    end.
 
 allocator_blocks_metric(Alloc, Instance, Kind, count, KindInfo) ->
     Count =
