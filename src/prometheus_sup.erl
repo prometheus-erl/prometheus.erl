@@ -34,12 +34,12 @@ init([]) ->
 create_tables() ->
     Tables = [
         {?PROMETHEUS_REGISTRY_TABLE, [bag, {read_concurrency, true}]},
-        {?PROMETHEUS_COUNTER_TABLE, [{write_concurrency, true}]},
-        {?PROMETHEUS_GAUGE_TABLE, [{write_concurrency, true}]},
-        {?PROMETHEUS_SUMMARY_TABLE, [{write_concurrency, true}]},
-        {?PROMETHEUS_QUANTILE_SUMMARY_TABLE, [{write_concurrency, true}]},
-        {?PROMETHEUS_HISTOGRAM_TABLE, [{read_concurrency, true}, {write_concurrency, true}]},
-        {?PROMETHEUS_BOOLEAN_TABLE, [{write_concurrency, true}]}
+        {?PROMETHEUS_COUNTER_TABLE, [{write_concurrency, auto}]},
+        {?PROMETHEUS_GAUGE_TABLE, [{write_concurrency, auto}]},
+        {?PROMETHEUS_SUMMARY_TABLE, [{write_concurrency, auto}]},
+        {?PROMETHEUS_QUANTILE_SUMMARY_TABLE, [{write_concurrency, auto}]},
+        {?PROMETHEUS_HISTOGRAM_TABLE, [{read_concurrency, true}, {write_concurrency, auto}]},
+        {?PROMETHEUS_BOOLEAN_TABLE, [{write_concurrency, auto}]}
     ],
     [maybe_create_table(Name, Options) || {Name, Options} <- Tables],
     ok.
