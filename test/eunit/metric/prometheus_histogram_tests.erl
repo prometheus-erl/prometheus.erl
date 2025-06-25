@@ -6,7 +6,8 @@
 
 prometheus_format_test_() ->
     {foreach, fun prometheus_eunit_common:start/0, fun prometheus_eunit_common:stop/1, [
-        fun test_registration/1,
+        fun test_registration_as_list/1,
+        fun test_registration_as_map/1,
         fun test_errors/1,
         fun test_buckets/1,
         fun test_observe/1,
@@ -23,7 +24,26 @@ prometheus_format_test_() ->
         fun test_collector3/1
     ]}.
 
-test_registration(_) ->
+test_registration_as_list(_) ->
+    Name = request_duration,
+    SpecWithRegistry = #{
+        name => Name,
+        buckets => [100, 300, 500, 750, 1000],
+        help => "",
+        registry => qwe
+    },
+    [
+        ?_assertEqual(
+            true,
+            prometheus_histogram:declare(SpecWithRegistry)
+        ),
+        ?_assertError(
+            {mf_already_exists, {qwe, Name}, "Consider using declare instead."},
+            prometheus_histogram:new(SpecWithRegistry)
+        )
+    ].
+
+test_registration_as_map(_) ->
     Name = request_duration,
     SpecWithRegistry = [
         {name, Name},

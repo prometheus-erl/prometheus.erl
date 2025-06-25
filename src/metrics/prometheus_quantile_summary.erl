@@ -458,15 +458,13 @@ validate_summary_spec(Spec) ->
     Bound = prometheus_metric_spec:get_value(bound, Spec, 2184),
     validate_error(Error),
     validate_bound(Bound),
-    [
-        {data, #{
-            ets_table => ?TABLE,
-            quantiles => QNs,
-            error => Error,
-            bound => Bound
-        }}
-        | Spec
-    ].
+    Data = #{
+        ets_table => ?TABLE,
+        quantiles => QNs,
+        error => Error,
+        bound => Bound
+    },
+    prometheus_metric_spec:add_value(data, Data, Spec).
 
 insert_metric(Registry, Name, LabelValues, Key) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
