@@ -9,7 +9,7 @@
 
 -export([new/0, new/1, position/2, default/0]).
 
--export([exponential/3, linear/3]).
+-export([exponential/3, linear/3, ddsketch/2]).
 
 -type bucket_bound() :: number() | infinity.
 -type buckets() :: [bucket_bound(), ...].
@@ -29,6 +29,7 @@ You can also specify your own buckets if desired instead.
     | default
     | {linear, number(), number(), pos_integer()}
     | {exponential, number(), number(), pos_integer()}
+    | {ddsketch, float(), pos_integer()}
     | buckets().
 
 -export_type([bucket_bound/0, buckets/0, config/0]).
@@ -46,6 +47,8 @@ new(undefined) ->
     erlang:error({no_buckets, undefined});
 new(default) ->
     default() ++ [infinity];
+new({ddsketch, Error, Bound}) ->
+    ddsketch(Error, Bound) ++ [infinity];
 new({linear, Start, Step, Count}) ->
     linear(Start, Step, Count) ++ [infinity];
 new({exponential, Start, Factor, Count}) ->
@@ -85,6 +88,29 @@ Please note these buckets are floats and represent seconds so you'll have to use
 """).
 -spec default() -> buckets().
 default() -> [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10].
+
+?DOC("""
+Creates preallocated buckets according to the DDSketch algorithm.
+
+For example, if you measure microseconds and you expect no operation to take more than a day,
+for a desired error of 1%, 1260 buckets is sufficient.
+
+```erlang
+3> prometheus_buckets:ddsketch(0.01, 1260).
+[1.0, 1.02020202020202, 1.040812162024283, 1.0618386703480058 |...]
+```
+
+The function raises `{invalid_value, Value, Message}` error if `Error` isn't positive,
+or if `Bound` is less than or equals to 1.
+""").
+-spec ddsketch(float(), pos_integer()) -> buckets().
+ddsketch(Error, _Bound) when Error < 0; 1 < Error ->
+    erlang:error({invalid_value, Error, "Buckets error should be a valid percentage point"});
+ddsketch(_Error, Bound) when Bound < 1 ->
+    erlang:error({invalid_value, Bound, "Buckets count should be positive"});
+ddsketch(Error, Bound) ->
+    Gamma = (1 + Error) / (1 - Error),
+    ddsketch(lists:seq(0, Bound), Gamma, []).
 
 ?DOC("""
 Creates `Count` buckets, where the lowest bucket has an upper bound of `Start` and each following
@@ -138,6 +164,12 @@ position(Buckets, Value) when is_list(Buckets), is_number(Value) ->
     find_position(Buckets, Value, 0);
 position(Buckets, Value) when is_tuple(Buckets), 1 < tuple_size(Buckets), is_number(Value) ->
     find_position_in_tuple(Buckets, Value, 1, tuple_size(Buckets)).
+
+ddsketch([], _, Acc) ->
+    lists:reverse(Acc);
+ddsketch([I | Rest], Gamma, Acc) ->
+    LowerBound = math:pow(Gamma, I),
+    ddsketch(Rest, Gamma, [LowerBound | Acc]).
 
 linear(_Current, _Step, 0, Acc) ->
     lists:reverse(Acc);

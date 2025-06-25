@@ -169,37 +169,38 @@ test_quantile_summary(_) ->
     ]),
     prometheus_quantile_summary:observe(orders_quantile_summary, 10),
     prometheus_quantile_summary:observe(orders_quantile_summary, 15),
+    Format = prometheus_text_format:format(),
     ?_assertEqual(
         <<
             "# TYPE orders_quantile_summary summary\n"
             "# HELP orders_quantile_summary Track orders count/total sum\n"
             "orders_quantile_summary_count 2\n"
             "orders_quantile_summary_sum 25\n"
-            "orders_quantile_summary{quantile=\"0.5\"} 15\n"
-            "orders_quantile_summary{quantile=\"0.9\"} 15\n"
-            "orders_quantile_summary{quantile=\"0.95\"} 15\n"
+            "orders_quantile_summary{quantile=\"0.5\"} 10.074696689511331\n"
+            "orders_quantile_summary{quantile=\"0.9\"} 15.029881751769699\n"
+            "orders_quantile_summary{quantile=\"0.95\"} 15.029881751769699\n"
             "\n"
         >>,
-        prometheus_text_format:format()
+        Format
     ).
 
 test_quantile_dsummary(_) ->
     prometheus_quantile_summary:new([{name, quantile_dsummary}, {labels, [host]}, {help, "qwe"}]),
     prometheus_quantile_summary:observe(quantile_dsummary, [123], 1.5),
     prometheus_quantile_summary:observe(quantile_dsummary, [123], 2.7),
-
+    Format = prometheus_text_format:format(),
     ?_assertEqual(
         <<
             "# TYPE quantile_dsummary summary\n"
             "# HELP quantile_dsummary qwe\n"
             "quantile_dsummary_count{host=\"123\"} 2\n"
             "quantile_dsummary_sum{host=\"123\"} 4.2\n"
-            "quantile_dsummary{host=\"123\",quantile=\"0.5\"} 2.7\n"
-            "quantile_dsummary{host=\"123\",quantile=\"0.9\"} 2.7\n"
-            "quantile_dsummary{host=\"123\",quantile=\"0.95\"} 2.7\n"
+            "quantile_dsummary{host=\"123\",quantile=\"0.5\"} 1.5067630358630386\n"
+            "quantile_dsummary{host=\"123\",quantile=\"0.9\"} 2.6911887203526157\n"
+            "quantile_dsummary{host=\"123\",quantile=\"0.95\"} 2.6911887203526157\n"
             "\n"
         >>,
-        prometheus_text_format:format()
+        Format
     ).
 
 test_histogram(_) ->

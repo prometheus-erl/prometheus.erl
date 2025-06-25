@@ -45,33 +45,18 @@ request_size_bytes\{quantile=\"0.95\"\}
 ```
 
 ### Configuration
-The specs cannot have a key called `quantile`, as this key is reserved by the implementation.
-
-Passing `targets`, the quantile estimator can be fine-tuned, as in
-`quantile_estimator:f_targeted/1`. See `default_targets/0` for the default values.
-
-Passing `compress_limit` we can configure how often to run compressions into the quantile summary
-algorithm.
-
-### Notes
-
-The underlying algorithm implemented in `m:quantile_estimator` does not support mergeability of
-summaries, therefore a summary in this implementation is linear, that is, all updates happen on the
-same ets record. Because of this, race conditions can imply datapoint loss.
-Statistically, this might not be relevant, but such impact is not ensured.
-
-Because of this, support for quantile summaries is rather experimental
-and histograms are recommended instead.
+See `t:ddskerl_ets:opts/0` for configuration options. These need to be passed as a proplist.
 """).
+
+-define(WIDTH, 16).
 
 %%% metric
 -export([
     new/1,
     declare/1,
-    default_targets/0,
+    set_default/2,
     deregister/1,
     deregister/2,
-    set_default/2,
     observe/2,
     observe/3,
     observe/4,
@@ -99,15 +84,10 @@ and histograms are recommended instead.
 
 -include("prometheus.hrl").
 
--include_lib("quantile_estimator/include/quantile_estimator.hrl").
-
 -behaviour(prometheus_metric).
 -behaviour(prometheus_collector).
 
 -define(TABLE, ?PROMETHEUS_QUANTILE_SUMMARY_TABLE).
--define(SUM_POS, 3).
--define(COUNTER_POS, 2).
--define(QUANTILE_POS, 4).
 
 ?DOC("""
 Creates a summary using `Spec`.
@@ -142,6 +122,13 @@ declare(Spec) ->
     Spec1 = validate_summary_spec(Spec),
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec1).
 
+?DOC(false).
+-spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
+set_default(Registry, Name) ->
+    #{error := Error, bound := Bound} = get_configuration(Registry, Name),
+    Key = key(Registry, Name, []),
+    ddskerl_ets:new(?TABLE, Key, Error, Bound).
+
 ?DOC(#{equiv => deregister(default, Name)}).
 -spec deregister(prometheus_metric:name()) -> {boolean(), boolean()}.
 deregister(Name) ->
@@ -160,15 +147,6 @@ deregister(Registry, Name) ->
     MFR = prometheus_metric:deregister_mf(?TABLE, Registry, Name),
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
-
-?DOC(false).
--spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
-set_default(Registry, Name) ->
-    Configuration = get_configuration(Registry, Name),
-    #{compress_limit := CompressLimit} = Configuration,
-    Key = key(Registry, Name, []),
-    Quantile = new_quantile(Configuration),
-    ets:insert_new(?TABLE, {Key, 0, 0, Quantile, CompressLimit}).
 
 ?DOC(#{equiv => observe(default, Name, [], Value)}).
 -spec observe(prometheus_metric:name(), number()) -> ok.
@@ -195,13 +173,12 @@ Raises:
     Value :: number().
 observe(Registry, Name, LabelValues, Value) when is_number(Value) ->
     Key = key(Registry, Name, LabelValues),
-    case ets:lookup(?TABLE, Key) of
-        [] ->
-            insert_metric(Registry, Name, LabelValues, Value, fun observe/4);
-        [{Key, Count, S, Q, CompressLimit}] ->
-            Quantile = quantile_add(Q, Value, CompressLimit),
-            Elem = {Key, Count + 1, S + Value, Quantile, CompressLimit},
-            ets:insert(?TABLE, Elem)
+    case ets:member(?TABLE, Key) of
+        true ->
+            ddskerl_ets:insert(?TABLE, Key, Value);
+        false ->
+            insert_metric(Registry, Name, LabelValues, Key),
+            observe(Registry, Name, LabelValues, Value)
     end,
     ok;
 observe(_Registry, _Name, _LabelValues, Value) ->
@@ -266,14 +243,11 @@ Raises:
     LabelValues :: prometheus_metric:label_values().
 remove(Registry, Name, LabelValues) ->
     prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    case
-        lists:flatten([
-            ets:take(
-                ?TABLE,
-                {Registry, Name, LabelValues}
-            )
-        ])
-    of
+    List = lists:flatten([
+        ets:take(?TABLE, {Registry, Name, LabelValues, SId})
+     || SId <- schedulers_seq()
+    ]),
+    case List of
         [] -> false;
         _ -> true
     end.
@@ -300,30 +274,22 @@ Raises:
     Name :: prometheus_metric:name(),
     LabelValues :: prometheus_metric:label_values().
 reset(Registry, Name, LabelValues) ->
-    MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    Configuration = prometheus_metric:mf_data(MF),
-    case
-        lists:usort([
-            ets:update_element(
-                ?TABLE,
-                {Registry, Name, LabelValues},
-                [{?COUNTER_POS, 0}, {?SUM_POS, 0}, {?QUANTILE_POS, new_quantile(Configuration)}]
-            )
-        ])
-    of
-        [_, _] -> true;
-        [true] -> true;
-        _ -> false
-    end.
+    _ = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
+    [
+        catch ddskerl_ets:reset(?TABLE, {Registry, Name, LabelValues, SId})
+     || SId <- schedulers_seq()
+    ],
+    true.
 
 ?DOC(#{equiv => value(default, Name, [])}).
--spec value(prometheus_metric:name()) -> {integer(), number()} | undefined.
+-spec value(prometheus_metric:name()) ->
+    {non_neg_integer(), number(), [{float(), float()}]} | undefined.
 value(Name) ->
     value(default, Name, []).
 
 ?DOC(#{equiv => value(default, Name, LabelValues)}).
 -spec value(prometheus_metric:name(), prometheus_metric:label_values()) ->
-    {integer(), number()} | undefined.
+    {non_neg_integer(), number(), [{float(), float()}]} | undefined.
 value(Name, LabelValues) ->
     value(default, Name, LabelValues).
 
@@ -338,62 +304,65 @@ Raises:
 * `{unknown_metric, Registry, Name}` error if summary named `Name` can't be found in `Registry`.
 * `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
 """).
--spec value(Registry, Name, LabelValues) -> {integer(), number()} | undefined when
+-spec value(Registry, Name, LabelValues) -> Result when
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
-    LabelValues :: prometheus_metric:label_values().
+    LabelValues :: prometheus_metric:label_values(),
+    Result :: {non_neg_integer(), number(), [{float(), float()}]} | undefined.
 value(Registry, Name, LabelValues) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    DU = prometheus_metric:mf_duration_unit(MF),
-    #{quantiles := QNs} = prometheus_metric:mf_data(MF),
-    Spec = [{{{Registry, Name, LabelValues}, '$1', '$2', '$3', '_'}, [], ['$$']}],
-    case ets:select(?TABLE, Spec) of
-        [] ->
+    case
+        lists:any(
+            fun(SId) -> ets:member(?TABLE, {Registry, Name, LabelValues, SId}) end, schedulers_seq()
+        )
+    of
+        false ->
             undefined;
-        Values ->
-            {Count, Sum, QE} = reduce_values(Values),
-            {Count, prometheus_time:maybe_convert_to_du(DU, Sum), quantile_values(QE, QNs)}
+        true ->
+            DU = prometheus_metric:mf_duration_unit(MF),
+            #{quantiles := QNs} = prometheus_metric:mf_data(MF),
+            [First | Rest] = lists:flatmap(
+                fun(SId) ->
+                    ets:lookup(?TABLE, {Registry, Name, LabelValues, SId})
+                end,
+                schedulers_seq()
+            ),
+            Total = lists:foldl(
+                fun(Elem, Acc) -> ddskerl_ets:merge_tuples(Acc, Elem) end, First, Rest
+            ),
+            case ddskerl_ets:total_tuple(Total) of
+                0 ->
+                    {0, 0, []};
+                Count ->
+                    Sum = ddskerl_ets:sum_tuple(Total),
+                    DuSum = prometheus_time:maybe_convert_to_du(DU, Sum),
+                    Values = [
+                        {QN,
+                            prometheus_time:maybe_convert_to_du(
+                                DU,
+                                ddskerl_ets:quantile_tuple(Total, QN)
+                            )}
+                     || QN <- QNs
+                    ],
+                    {Count, DuSum, Values}
+            end
     end.
 
+-spec default_quantiles() -> [float()].
+default_quantiles() ->
+    [0.5, 0.90, 0.95].
+
 -spec values(prometheus_registry:registry(), prometheus_metric:name()) ->
-    [prometheus_model:'Summary'()].
+    [{[{atom(), dynamic()}], non_neg_integer(), infinity | number(), [{float(), float()}]}].
 values(Registry, Name) ->
     case prometheus_metric:check_mf_exists(?TABLE, Registry, Name) of
         false ->
             [];
         MF ->
-            DU = prometheus_metric:mf_duration_unit(MF),
             Labels = prometheus_metric:mf_labels(MF),
-            #{quantiles := QNs} = Configuration = prometheus_metric:mf_data(MF),
-            MFValues = load_all_values(Registry, Name),
-            Foldl = fun
-                ([_, 0, _, _], ResAcc) ->
-                    %% Ignore quantile evaluation if no data are provided
-                    ResAcc;
-                ([L, C, S, QE], ResAcc) ->
-                    {PrevCount, PrevSum, PrevQE} = maps:get(
-                        L, ResAcc, {0, 0, new_quantile(Configuration)}
-                    ),
-                    ResAcc#{L => {PrevCount + C, PrevSum + S, quantile_merge(PrevQE, QE)}}
-            end,
-            ReducedMap = lists:foldl(
-                Foldl,
-                #{},
-                MFValues
-            ),
-            ReducedMapList = lists:sort(maps:to_list(ReducedMap)),
-            Foldr = fun({LabelValues, {Count, Sum, QE}}, Acc) ->
-                [
-                    {
-                        lists:zip(Labels, LabelValues),
-                        Count,
-                        prometheus_time:maybe_convert_to_du(DU, Sum),
-                        quantile_values(QE, QNs)
-                    }
-                    | Acc
-                ]
-            end,
-            lists:foldr(Foldr, [], ReducedMapList)
+            CLabels = prometheus_metric:mf_constant_labels(MF),
+            Fun = fun value_summary_metric/6,
+            loop_through_keys(Name, Fun, CLabels, Labels, Registry)
     end.
 
 %%====================================================================
@@ -404,177 +373,126 @@ values(Registry, Name) ->
 -spec deregister_cleanup(prometheus_registry:registry()) -> ok.
 deregister_cleanup(Registry) ->
     prometheus_metric:deregister_mf(?TABLE, Registry),
-    true = ets:match_delete(?TABLE, {{Registry, '_', '_'}, '_', '_', '_', '_'}),
+    ets:select_delete(?TABLE, clean_registry_select(Registry)),
     ok.
 
 ?DOC(false).
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
+    Metrics = prometheus_metric:metrics(?TABLE, Registry),
     [
         Callback(create_summary(Name, Help, {CLabels, Labels, Registry, DU, Data}))
-     || [Name, {Labels, Help}, CLabels, DU, Data] <- prometheus_metric:metrics(?TABLE, Registry)
+     || [Name, {Labels, Help}, CLabels, DU, Data] <- Metrics
     ],
     ok.
 
 ?DOC(false).
 -spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
-collect_metrics(Name, {CLabels, Labels, Registry, DU, Configuration}) ->
-    #{quantiles := QNs} = Configuration,
-    MFValues = load_all_values(Registry, Name),
-    Foldl = fun
-        ([_, 0, _, _], ResAcc) ->
-            %% Ignore quantile evaluation if no data are provided
-            ResAcc;
-        ([L, C, S, QE], ResAcc) ->
-            {PrevCount, PrevSum, PrevQE} = maps:get(L, ResAcc, {0, 0, new_quantile(Configuration)}),
-            ResAcc#{L => {PrevCount + C, PrevSum + S, quantile_merge(PrevQE, QE)}}
-    end,
-    ReducedMap = lists:foldl(Foldl, #{}, MFValues),
-    ReducedMapList = lists:sort(maps:to_list(ReducedMap)),
-    Foldr = fun({LabelValues, {Count, Sum, QE}}, Acc) ->
-        [
-            prometheus_model_helpers:summary_metric(
-                CLabels ++ lists:zip(Labels, LabelValues),
-                Count,
-                prometheus_time:maybe_convert_to_du(DU, Sum),
-                quantile_values(QE, QNs)
-            )
-            | Acc
-        ]
-    end,
-    lists:foldr(Foldr, [], ReducedMapList).
+collect_metrics(Name, {CLabels, Labels, Registry, _DU, _Configuration}) ->
+    Fun = fun model_summary_metric/6,
+    loop_through_keys(Name, Fun, CLabels, Labels, Registry).
+
+loop_through_keys(Name, Fun, CLabels, Labels, Registry) ->
+    Sets = sets:new([{version, 2}]),
+    First = ets:first(?TABLE),
+    loop_through_keys(Name, Fun, CLabels, Labels, Registry, Sets, [], First).
+
+loop_through_keys(_, _, _, _, _, _, Acc, '$end_of_table') ->
+    Acc;
+loop_through_keys(
+    Name, Fun, CLabels, Labels, Registry, Set, Acc, {Registry, Name, LabelValues, _} = CurrentKey
+) ->
+    Key = {Registry, Name, LabelValues},
+    case sets:is_element(Key, Set) of
+        true ->
+            NextKey = ets:next(?TABLE, CurrentKey),
+            loop_through_keys(Name, Fun, CLabels, Labels, Registry, Set, Acc, NextKey);
+        false ->
+            {Count, Sum, QNs} = value(Registry, Name, LabelValues),
+            Value = Fun(CLabels, Labels, LabelValues, Count, Sum, QNs),
+            NewAcc = [Value | Acc],
+            NewSet = sets:add_element(Key, Set),
+            NextKey = ets:next(?TABLE, CurrentKey),
+            loop_through_keys(Name, Fun, CLabels, Labels, Registry, NewSet, NewAcc, NextKey)
+    end;
+loop_through_keys(Name, Fun, CLabels, Labels, Registry, Set, Acc, CurrentKey) ->
+    NextKey = ets:next(?TABLE, CurrentKey),
+    loop_through_keys(Name, Fun, CLabels, Labels, Registry, Set, Acc, NextKey).
+
+model_summary_metric(CLabels, Labels, LabelValues, Count, Sum, QNs) ->
+    Labs = CLabels ++ lists:zip(Labels, LabelValues),
+    prometheus_model_helpers:summary_metric(Labs, Count, Sum, QNs).
+
+value_summary_metric(_CLabels, Labels, LabelValues, Count, Sum, QNs) ->
+    {lists:zip(Labels, LabelValues), Count, Sum, QNs}.
 
 %%====================================================================
 %% Private Parts
 %%====================================================================
 
+clean_registry_select(Registry) ->
+    [
+        {'$1',
+            [
+                {'is_tuple', {element, 1, '$1'}},
+                {'==', Registry, {element, 1, {element, 1, '$1'}}}
+            ],
+            [true]}
+    ].
+
 deregister_select(Registry, Name) ->
-    [{{{Registry, Name, '_'}, '_', '_', '_', '_'}, [], [true]}].
+    [
+        {'$1',
+            [
+                {'is_tuple', {element, 1, '$1'}},
+                {'==', Registry, {element, 1, {element, 1, '$1'}}},
+                {'==', Name, {element, 2, {element, 1, '$1'}}}
+            ],
+            [true]}
+    ].
 
 validate_summary_spec(Spec) ->
-    Labels = prometheus_metric_spec:labels(Spec),
-    validate_summary_labels(Labels),
-    {Invariant, QNs} = invariant_and_quantiles_from_spec(Spec),
-    CompressLimit = compress_limit_from_spec(Spec),
+    QNs = prometheus_metric_spec:get_value(quantiles, Spec, default_quantiles()),
+    Error = prometheus_metric_spec:get_value(error, Spec, 0.01),
+    Bound = prometheus_metric_spec:get_value(bound, Spec, 2184),
+    validate_error(Error),
+    validate_bound(Bound),
     Data = #{
+        ets_table => ?TABLE,
         quantiles => QNs,
-        invariant => Invariant,
-        compress_limit => CompressLimit
+        error => Error,
+        bound => Bound
     },
     prometheus_metric_spec:add_value(data, Data, Spec).
 
-validate_summary_labels(Labels) ->
-    [raise_error_if_quantile_label_found(Label) || Label <- Labels].
-
-raise_error_if_quantile_label_found("quantile") ->
-    erlang:error(
-        {invalid_metric_label_name, "quantile", "summary cannot have a label named \"quantile\""}
-    );
-raise_error_if_quantile_label_found(Label) ->
-    Label.
-
-insert_metric(Registry, Name, LabelValues, Value, ConflictCB) ->
+insert_metric(Registry, Name, LabelValues, Key) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    Configuration = prometheus_metric:mf_data(MF),
-    #{compress_limit := CompressLimit} = Configuration,
-    Quantile = insert_into_new_quantile(Configuration, Value),
-    Elem = {key(Registry, Name, LabelValues), 1, Value, Quantile, CompressLimit},
-    case ets:insert_new(?TABLE, Elem) of
-        %% some sneaky process already inserted
-        false ->
-            ConflictCB(Registry, Name, LabelValues, Value);
-        true ->
-            ok
-    end.
-
-load_all_values(Registry, Name) ->
-    ets:match(?TABLE, {{Registry, Name, '$1'}, '$2', '$3', '$4', '_'}).
+    Configuration0 = prometheus_metric:mf_data(MF),
+    Configuration = Configuration0#{name => Key},
+    ddskerl_ets:new(Configuration).
 
 get_configuration(Registry, Name) ->
     MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name),
     prometheus_metric:mf_data(MF).
 
 key(Registry, Name, LabelValues) ->
-    {Registry, Name, LabelValues}.
+    X = erlang:system_info(scheduler_id),
+    Rnd = X band (?WIDTH - 1),
+    {Registry, Name, LabelValues, Rnd}.
 
-reduce_values(Values) ->
-    {
-        lists:sum([C || [C, _, _] <- Values]),
-        lists:sum([S || [_, S, _] <- Values]),
-        fold_quantiles([Q || [_C, _S, Q] <- Values])
-    }.
+schedulers_seq() ->
+    lists:seq(0, ?WIDTH - 1).
 
 create_summary(Name, Help, Data) ->
     prometheus_model_helpers:create_mf(Name, Help, summary, ?MODULE, Data).
 
-default_compress_limit() ->
-    100.
+validate_error(Error) when is_number(Error), 0.0 < Error, Error < 100.0 ->
+    ok;
+validate_error(Error) ->
+    erlang:error({invalid_error, Error, "Error should be a percentage point in (0,100)"}).
 
-invariant_and_quantiles_from_spec(Spec) ->
-    Targets = prometheus_metric_spec:get_value(targets, Spec, default_targets()),
-    validate_targets(Targets),
-    {QNs, _} = lists:unzip(Targets),
-    Invariant = quantile_estimator:f_targeted(Targets),
-    {Invariant, QNs}.
-
-compress_limit_from_spec(Spec) ->
-    prometheus_metric_spec:get_value(compress_limit, Spec, default_compress_limit()).
-
-validate_targets(Targets) when is_list(Targets) ->
-    Fun = fun
-        ({Q, _E}) when not is_float(Q) ->
-            erlang:error({invalid_targets, "target quantile value should be float"});
-        ({_Q, E}) when not is_float(E) ->
-            erlang:error({invalid_targets, "target error value should be float"});
-        ({_, _}) ->
-            ok;
-        (_) ->
-            erlang:error({invalid_targets, "targets should be tuples of quantile and error"})
-    end,
-    lists:foreach(Fun, Targets);
-validate_targets(_Targets) ->
-    erlang:error({invalid_targets, "targets should be a list of tuples"}).
-
--spec default_targets() -> [{float(), float()}].
-default_targets() ->
-    [{0.5, 0.02}, {0.9, 0.01}, {0.95, 0.005}].
-
-new_quantile(#{invariant := Invariant}) ->
-    quantile_estimator:new(Invariant).
-
-insert_into_new_quantile(Configuration, Val) ->
-    quantile_estimator:insert(Val, new_quantile(Configuration)).
-
-quantile_add(#quantile_estimator{inserts_since_compression = ISS} = Q, Val, CompressLimit) ->
-    Q1 =
-        case ISS > CompressLimit of
-            true -> quantile_estimator:compress(Q);
-            false -> Q
-        end,
-    quantile_estimator:insert(Val, Q1).
-
-%% Quantile estimator throws on empty stats
-quantile_values(#quantile_estimator{data = []}, _QNs) ->
-    [];
-quantile_values(Q, QNs) ->
-    [{QN, quantile_estimator:quantile(QN, Q)} || QN <- QNs].
-
-fold_quantiles(QList) ->
-    Fun = fun
-        (Q, init) -> Q;
-        (Q1, Q2) -> quantile_merge(Q1, Q2)
-    end,
-    lists:foldl(Fun, init, QList).
-
-quantile_merge(QE1, QE2) ->
-    #quantile_estimator{samples_count = N1, data = Data1, invariant = Invariant} = QE1,
-    #quantile_estimator{samples_count = N2, data = Data2} = QE2,
-    quantile_estimator:compress(#quantile_estimator{
-        %% Both these fields will be replaced by compression
-        data_count = 0,
-        inserts_since_compression = 0,
-        samples_count = N1 + N2,
-        data = Data1 ++ Data2,
-        invariant = Invariant
-    }).
+validate_bound(Bound) when is_integer(Bound), 0 < Bound ->
+    ok;
+validate_bound(Bound) ->
+    erlang:error({invalid_bound, Bound, "Bound should be a positive integer"}).

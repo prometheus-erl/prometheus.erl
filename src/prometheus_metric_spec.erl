@@ -115,7 +115,8 @@ extract_common_params(Spec) ->
 
 ?DOC(false).
 ?DOC(#{equiv => get_value(Key, Spec, undefined)}).
--spec add_value(Key :: atom(), Value :: dynamic(), Spec :: prometheus_metric:spec()) -> term().
+-spec add_value(Key :: atom(), Value :: dynamic(), Spec :: prometheus_metric:spec()) ->
+    prometheus_metric:spec().
 add_value(Key, Value, Spec) when is_list(Spec) ->
     [{Key, Value} | Spec];
 add_value(Key, Value, Spec) when is_map(Spec) ->
@@ -123,7 +124,7 @@ add_value(Key, Value, Spec) when is_map(Spec) ->
 
 ?DOC(false).
 ?DOC(#{equiv => get_value(Key, Spec, undefined)}).
--spec get_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> term().
+-spec get_value(Key :: atom(), Spec :: prometheus_metric:spec()) -> dynamic().
 get_value(Key, Spec) ->
     get_value(Key, Spec, undefined).
 

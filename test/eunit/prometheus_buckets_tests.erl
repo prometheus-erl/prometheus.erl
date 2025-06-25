@@ -32,6 +32,60 @@ linear_test() ->
     ?assertEqual([-15, -10, -5, 0, 5, 10], prometheus_buckets:linear(-15, 5, 6)),
     ?assertEqual([1, 5.5, 10, 14.5, 19, 23.5], prometheus_buckets:linear(1, 4.5, 6)).
 
+ddsketch_errors_test() ->
+    ?assertError(
+        {invalid_value, 5, "Buckets error should be a valid percentage point"},
+        prometheus_buckets:ddsketch(5, 0)
+    ),
+    ?assertError(
+        {invalid_value, 0, "Buckets count should be positive"},
+        prometheus_buckets:ddsketch(0.01, 0)
+    ).
+
+ddsketch_test() ->
+    ?assertEqual(
+        [
+            1.0,
+            1.02020202020202,
+            1.040812162024283,
+            1.0618386703480058,
+            1.0832899566176624,
+            1.105174602205898,
+            1.127501361846421,
+            1.1502791671362476,
+            1.1735171301086968,
+            1.1972245468785696,
+            1.2214109013609646
+        ],
+        prometheus_buckets:ddsketch(0.01, 10)
+    ),
+    ?assertEqual(
+        [
+            1.0,
+            1.2222222222222223,
+            1.4938271604938274,
+            1.825788751714678,
+            2.231519585429051,
+            2.7274128266355073,
+            3.3335045658878424,
+            4.074283358307364,
+            4.979679660153445,
+            6.086275140187544,
+            7.438780726895887,
+            9.09184311065053,
+            11.112252690795092,
+            13.581642177638448,
+            16.599784883780327,
+            20.288625969064846,
+            24.797209517745923,
+            30.307700521689465,
+            37.042745082064904,
+            45.274466211412665,
+            55.335458702837705
+        ],
+        prometheus_buckets:ddsketch(0.1, 20)
+    ).
+
 exponential_errors_test() ->
     ?assertError(
         {invalid_value, 0, "Buckets count should be positive"},

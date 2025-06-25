@@ -14,11 +14,15 @@ prometheus_format_test_() ->
         fun test_observe/1,
         fun test_observe_quantiles/1,
         fun test_observe_configured_quantiles/1,
+        fun test_observe_configured_quantiles_and_error/1,
         fun test_observe_duration_seconds/1,
         fun test_observe_duration_milliseconds/1,
         fun test_deregister/1,
         fun test_remove/1,
         fun test_default_value/1,
+        fun test_values_when_empty/1,
+        fun test_values_when_multiple_in_parallel/1,
+        fun test_values_when_non_existing/1,
         fun test_values/1,
         fun test_collector1/1,
         fun test_collector2/1,
@@ -29,13 +33,23 @@ prometheus_format_test_() ->
 test_merge_logic_when_fetching_value(_) ->
     Name = ?FUNCTION_NAME,
     prometheus_quantile_summary:declare(
-        [{name, Name}, {labels, []}, {help, ""}, {compress_limit, 100}]
+        [{name, Name}, {labels, []}, {help, ""}, {error, 0.01}, {bound, 2184}]
     ),
-    % Observe many values
-    Fun = fun() -> prometheus_quantile_summary:observe(Name, 1) end,
-    Monitors = [spawn_monitor(Fun) || _ <- lists:seq(1, 1000)],
-    collect_monitors(Monitors),
-    [?_assertMatch({_, _, _}, prometheus_quantile_summary:value(Name))].
+    parallel_observe_sequence_of_values(Name),
+    Value = prometheus_quantile_summary:value(Name),
+    [
+        ?_assertMatch(
+            {100000, _, [
+                {0.5, Q5},
+                {0.90, Q90},
+                {0.95, Q95}
+            ]} when
+                (abs(50 - Q5) =< 1) andalso
+                    (abs(90 - Q90) =< 1) andalso
+                    (abs(95 - Q95) =< 1),
+            Value
+        )
+    ].
 
 test_registration_as_list(_) ->
     Name = orders_summary,
@@ -78,17 +92,25 @@ test_errors(_) ->
             prometheus_quantile_summary:new([{name, "qwe"}, {labels, 12}, {help, ""}])
         ),
         ?_assertError(
-            {invalid_metric_label_name, "quantile",
-                "summary cannot have a label named \"quantile\""},
+            {invalid_metric_help, 12, "metric help is not a string"},
+            prometheus_quantile_summary:new([{name, "qwe"}, {help, 12}])
+        ),
+        ?_assertError(
+            {invalid_bound, 3.141592, "Bound should be a positive integer"},
             prometheus_quantile_summary:new([
                 {name, "qwe"},
-                {labels, ["qua", "quantile"]},
+                {bound, 3.141592},
                 {help, ""}
             ])
         ),
         ?_assertError(
-            {invalid_metric_help, 12, "metric help is not a string"},
-            prometheus_quantile_summary:new([{name, "qwe"}, {help, 12}])
+            {invalid_error, 101, "Error should be a percentage point in (0,100)"},
+            prometheus_quantile_summary:new([
+                {name, "qwe"},
+                {error, 101},
+                {labels, ["qua", "quantile"]},
+                {help, ""}
+            ])
         ),
         %% mf/arity errors
         ?_assertError(
@@ -164,14 +186,15 @@ test_observe(_) ->
     prometheus_quantile_summary:reset(orders_summary, [electronics]),
     RValue = prometheus_quantile_summary:value(orders_summary, [electronics]),
     [
-        ?_assertMatch({4, Sum, _} when Sum > 29.1 andalso Sum < 29.3, Value),
-        ?_assertMatch({0, 0, _}, RValue)
+        ?_assertMatch({4, Sum, QNs} when Sum > 29.1 andalso Sum < 29.3 andalso is_list(QNs), Value),
+        ?_assertMatch({0, 0, []}, RValue)
     ].
 
 test_observe_quantiles(_) ->
     prometheus_quantile_summary:new([
         {name, orders_summary_q},
         {labels, [department]},
+        {quantiles, [0.0, 0.5, 0.75, 0.90, 0.95, 0.99, 0.999, 1.0]},
         {help, "Track orders quantiles"}
     ]),
     [
@@ -183,7 +206,27 @@ test_observe_quantiles(_) ->
     prometheus_quantile_summary:reset(orders_summary_q, [electronics]),
     RValue = prometheus_quantile_summary:value(orders_summary_q, [electronics]),
     [
-        ?_assertMatch({100, 5050, [{0.5, 53}, {0.9, 92}, {0.95, 96}]}, Value),
+        ?_assertMatch(
+            {100, 5050, [
+                {+0.0, Q0},
+                {0.5, Q5},
+                {0.75, Q75},
+                {0.90, Q90},
+                {0.95, Q95},
+                {0.99, Q99},
+                {0.999, Q999},
+                {1.0, Q1}
+            ]} when
+                (abs(1 - Q0) =< 1) andalso
+                    (abs(50 - Q5) =< 1) andalso
+                    (abs(75 - Q75) =< 1) andalso
+                    (abs(90 - Q90) =< 1) andalso
+                    (abs(95 - Q95) =< 1) andalso
+                    (abs(99 - Q99) =< 1) andalso
+                    (abs(100 - Q999) =< 1) andalso
+                    (abs(100 - Q1) =< 1),
+            Value
+        ),
         ?_assertMatch({0, 0, []}, RValue)
     ].
 
@@ -192,7 +235,7 @@ test_observe_configured_quantiles(_) ->
         {name, orders_summary_q_custom},
         {labels, [department]},
         {help, "Track orders quantiles"},
-        {targets, [{0.5, 0.05}, {0.75, 0.02}]}
+        {quantiles, [0.5, 0.75]}
     ]),
     [
         prometheus_quantile_summary:observe(orders_summary_q_custom, [electronics], N)
@@ -203,15 +246,46 @@ test_observe_configured_quantiles(_) ->
     prometheus_quantile_summary:reset(orders_summary_q_custom, [electronics]),
     RValue = prometheus_quantile_summary:value(orders_summary_q_custom, [electronics]),
     [
-        ?_assertMatch({100, 5050, [{0.5, 55}, {0.75, 78}]}, Value),
+        ?_assertMatch(
+            {100, 5050, [{0.5, Q5}, {0.75, Q75}]} when
+                (abs(50 - Q5) =< 1) andalso
+                    (abs(75 - Q75) =< 1),
+            Value
+        ),
+        ?_assertMatch({0, 0, []}, RValue)
+    ].
+
+test_observe_configured_quantiles_and_error(_) ->
+    prometheus_quantile_summary:new([
+        {name, orders_summary_q_custom},
+        {labels, [department]},
+        {help, "Track orders quantiles"},
+        {quantiles, [0.5, 0.95]},
+        {error, 0.005}
+    ]),
+    [
+        prometheus_quantile_summary:observe(orders_summary_q_custom, [electronics], N)
+     || N <- lists:seq(1, 100)
+    ],
+
+    Value = prometheus_quantile_summary:value(orders_summary_q_custom, [electronics]),
+    prometheus_quantile_summary:reset(orders_summary_q_custom, [electronics]),
+    RValue = prometheus_quantile_summary:value(orders_summary_q_custom, [electronics]),
+    [
+        ?_assertMatch(
+            {100, 5050, [{0.5, Q5}, {0.95, Q95}]} when
+                (abs(50 - Q5) =< 0.5) andalso
+                    (abs(95 - Q95) =< 0.5),
+            Value
+        ),
         ?_assertMatch({0, 0, []}, RValue)
     ].
 
 test_observe_duration_seconds(_) ->
     prometheus_quantile_summary:new([
         {name, <<"fun_duration_seconds">>},
-        {help, ""},
-        {duration_unit, seconds}
+        {duration_unit, seconds},
+        {help, ""}
     ]),
     prometheus_quantile_summary:observe_duration(<<"fun_duration_seconds">>, fun() ->
         timer:sleep(1000)
@@ -350,7 +424,48 @@ test_default_value(_) ->
     [
         ?_assertEqual(undefined, UndefinedValue),
         ?_assertMatch([], EmptyMetric),
-        ?_assertMatch({0, 0, _}, SomethingValue)
+        ?_assertMatch({0, 0, []}, SomethingValue)
+    ].
+
+test_values_when_empty(_) ->
+    prometheus_quantile_summary:new([
+        {name, orders_summary},
+        {labels, [department]},
+        {help, "Track orders count/total sum"}
+    ]),
+    [
+        ?_assertMatch(
+            [],
+            lists:sort(prometheus_quantile_summary:values(default, orders_summary))
+        )
+    ].
+
+test_values_when_multiple_in_parallel(_) ->
+    prometheus_quantile_summary:new([
+        {name, orders_summary},
+        {labels, []},
+        {help, "Track orders count/total sum"}
+    ]),
+    parallel_observe_sequence_of_values(orders_summary),
+    [
+        ?_assertMatch(
+            [
+                {[], 100000, 5050000, [
+                    {0.5, 49.90296094906653},
+                    {0.9, 89.13032933635913},
+                    {0.95, 94.64203039019942}
+                ]}
+            ],
+            lists:sort(prometheus_quantile_summary:values(default, orders_summary))
+        )
+    ].
+
+test_values_when_non_existing(_) ->
+    [
+        ?_assertMatch(
+            [],
+            lists:sort(prometheus_quantile_summary:values(default, orders_summary))
+        )
     ].
 
 test_values(_) ->
@@ -361,7 +476,6 @@ test_values(_) ->
     ]),
     prometheus_quantile_summary:observe(orders_summary, [electronics], 765.5),
     prometheus_quantile_summary:observe(orders_summary, [groceries], 112.3),
-
     [
         ?_assertMatch(
             [
@@ -485,6 +599,17 @@ test_collector3(_) ->
             MFList
         )
     ].
+
+parallel_observe_sequence_of_values(Name) ->
+    % Observe many values
+    Fun = fun() ->
+        [
+            prometheus_quantile_summary:observe(Name, N)
+         || N <- lists:seq(1, 100)
+        ]
+    end,
+    Monitors = [spawn_monitor(Fun) || _ <- lists:seq(1, 1000)],
+    collect_monitors(Monitors).
 
 collect_monitors([]) ->
     ok;
