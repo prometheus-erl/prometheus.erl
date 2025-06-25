@@ -97,7 +97,7 @@ for a desired error of 1%, 1260 buckets is sufficient.
 
 ```erlang
 3> prometheus_buckets:ddsketch(0.01, 1260).
-['TODO']
+[1.0, 1.02020202020202, 1.040812162024283, 1.0618386703480058 |...]
 ```
 
 The function raises `{invalid_value, Value, Message}` error if `Error` isn't positive,
