@@ -520,7 +520,7 @@ validate_histogram_spec(Spec) ->
     validate_histogram_labels(Labels),
     RBuckets = prometheus_metric_spec:get_value(buckets, Spec, default),
     Buckets = prometheus_buckets:new(RBuckets),
-    [{data, Buckets} | Spec].
+    prometheus_metric_spec:add_value(data, Buckets, Spec).
 
 validate_histogram_labels(Labels) ->
     [raise_error_if_le_label_found(Label) || Label <- Labels].

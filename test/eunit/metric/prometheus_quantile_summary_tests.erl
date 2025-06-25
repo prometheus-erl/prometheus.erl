@@ -8,7 +8,8 @@
 
 prometheus_format_test_() ->
     {foreach, fun prometheus_eunit_common:start/0, fun prometheus_eunit_common:stop/1, [
-        fun test_registration/1,
+        fun test_registration_as_list/1,
+        fun test_registration_as_map/1,
         fun test_errors/1,
         fun test_observe/1,
         fun test_observe_quantiles/1,
@@ -36,9 +37,23 @@ test_merge_logic_when_fetching_value(_) ->
     collect_monitors(Monitors),
     [?_assertMatch({_, _, _}, prometheus_quantile_summary:value(Name))].
 
-test_registration(_) ->
+test_registration_as_list(_) ->
     Name = orders_summary,
     SpecWithRegistry = [{name, Name}, {help, ""}, {registry, qwe}],
+    [
+        ?_assertEqual(
+            true,
+            prometheus_quantile_summary:declare(SpecWithRegistry)
+        ),
+        ?_assertError(
+            {mf_already_exists, {qwe, Name}, "Consider using declare instead."},
+            prometheus_quantile_summary:new(SpecWithRegistry)
+        )
+    ].
+
+test_registration_as_map(_) ->
+    Name = orders_summary,
+    SpecWithRegistry = #{name => Name, help => "", registry => qwe},
     [
         ?_assertEqual(
             true,

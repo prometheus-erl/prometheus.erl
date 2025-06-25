@@ -457,14 +457,12 @@ validate_summary_spec(Spec) ->
     validate_summary_labels(Labels),
     {Invariant, QNs} = invariant_and_quantiles_from_spec(Spec),
     CompressLimit = compress_limit_from_spec(Spec),
-    [
-        {data, #{
-            quantiles => QNs,
-            invariant => Invariant,
-            compress_limit => CompressLimit
-        }}
-        | Spec
-    ].
+    Data = #{
+        quantiles => QNs,
+        invariant => Invariant,
+        compress_limit => CompressLimit
+    },
+    prometheus_metric_spec:add_value(data, Data, Spec).
 
 validate_summary_labels(Labels) ->
     [raise_error_if_quantile_label_found(Label) || Label <- Labels].
