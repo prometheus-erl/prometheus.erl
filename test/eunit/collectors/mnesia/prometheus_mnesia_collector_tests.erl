@@ -41,10 +41,10 @@ test_mnesia_on_collector_env_on() ->
     ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_lock_queue")),
     ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_transaction_participants")),
     ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_transaction_coordinators")),
-    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_failed_transactions")),
-    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_committed_transactions")),
-    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_logged_transactions")),
-    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_restarted_transactions")),
+    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_failed_transactions_total")),
+    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_committed_transactions_total")),
+    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_logged_transactions_total")),
+    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_restarted_transactions_total")),
     ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_memory_usage_bytes")),
     application:unset_env(prometheus, mnesia_collector_metrics, []).
 
@@ -56,10 +56,10 @@ test_mnesia_on_collector_env_off() ->
     ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_lock_queue")),
     ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_transaction_participants")),
     ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_transaction_coordinators")),
-    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_failed_transactions")),
-    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_committed_transactions")),
-    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_logged_transactions")),
-    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_restarted_transactions")),
+    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_failed_transactions_total")),
+    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_committed_transactions_total")),
+    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_logged_transactions_total")),
+    ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_restarted_transactions_total")),
     ?assertMatch(nomatch, re:run(Metrics, "erlang_mnesia_memory_usage_bytes")),
     application:unset_env(prometheus, mnesia_collector_metrics, []).
 
@@ -70,10 +70,10 @@ test_mnesia_on_collector() ->
     ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_lock_queue")),
     ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_transaction_participants")),
     ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_transaction_coordinators")),
-    ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_failed_transactions")),
-    ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_committed_transactions")),
-    ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_logged_transactions")),
-    ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_restarted_transactions")),
+    ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_failed_transactions_total")),
+    ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_committed_transactions_total")),
+    ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_logged_transactions_total")),
+    ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_restarted_transactions_total")),
     ?assertMatch({match, _}, re:run(Metrics, "erlang_mnesia_memory_usage_bytes")).
 
 test_mnesia_on_collector_global_labels() ->

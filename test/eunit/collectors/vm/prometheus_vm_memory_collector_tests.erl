@@ -14,33 +14,33 @@ test_default_metrics(_) ->
     prometheus_registry:register_collector(prometheus_vm_memory_collector),
     Metrics = prometheus_text_format:format(),
     [
-        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_atom_bytes_total")),
-        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_bytes_total")),
+        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_atom_bytes")),
+        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_bytes")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_dets_tables")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_ets_tables")),
-        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_processes_bytes_total")),
-        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_system_bytes_total"))
+        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_processes_bytes")),
+        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_system_bytes"))
     ].
 
 test_all_metrics(_) ->
     try
         application:set_env(prometheus, vm_memory_collector_metrics, [
-            atom_bytes_total,
-            bytes_total,
+            atom_bytes,
+            bytes,
             dets_tables,
             ets_tables,
-            processes_bytes_total,
-            system_bytes_total
+            processes_bytes,
+            system_bytes
         ]),
         prometheus_registry:register_collector(prometheus_vm_memory_collector),
         Metrics = prometheus_text_format:format(),
         [
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_atom_bytes_total")),
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_bytes_total")),
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_atom_bytes")),
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_bytes")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_dets_tables")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_ets_tables")),
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_processes_bytes_total")),
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_system_bytes_total"))
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_processes_bytes")),
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_system_bytes"))
         ]
     after
         application:unset_env(prometheus, vm_memory_collector_metrics)
@@ -49,18 +49,18 @@ test_all_metrics(_) ->
 test_custom_metrics(_) ->
     try
         application:set_env(prometheus, vm_memory_collector_metrics, [
-            atom_bytes_total,
+            atom_bytes,
             dets_tables
         ]),
         prometheus_registry:register_collector(prometheus_vm_memory_collector),
         Metrics = prometheus_text_format:format(),
         [
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_atom_bytes_total")),
-            ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_memory_bytes_total")),
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_atom_bytes")),
+            ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_memory_bytes")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_dets_tables")),
             ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_memory_ets_tables")),
-            ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_memory_processes_bytes_total")),
-            ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_memory_system_bytes_total"))
+            ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_memory_processes_bytes")),
+            ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_memory_system_bytes"))
         ]
     after
         application:unset_env(prometheus, vm_memory_collector_metrics)
@@ -77,5 +77,5 @@ test_global_labels(_) ->
             application:unset_env(prometheus, global_labels)
         end,
     [
-        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_atom_bytes_total{node="))
+        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_memory_atom_bytes{node="))
     ].

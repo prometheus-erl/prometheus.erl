@@ -38,21 +38,21 @@ test_default_metrics(_) ->
             {match, _},
             re:run(
                 Metrics,
-                "erlang_vm_statistics_garbage_collection_number_of_gcs"
+                "erlang_vm_statistics_garbage_collection_number_of_gcs_total"
             )
         ),
         ?_assertMatch(
             {match, _},
             re:run(
                 Metrics,
-                "erlang_vm_statistics_garbage_collection_words_reclaimed"
+                "erlang_vm_statistics_garbage_collection_words_reclaimed_total"
             )
         ),
         ?_assertMatch(
             {match, _},
             re:run(
                 Metrics,
-                "erlang_vm_statistics_garbage_collection_bytes_reclaimed"
+                "erlang_vm_statistics_garbage_collection_bytes_reclaimed_total"
             )
         ),
         ?_assertMatch(
@@ -65,11 +65,11 @@ test_default_metrics(_) ->
         ),
         ?_assertMatch(
             {match, _},
-            re:run(Metrics, "erlang_vm_statistics_runtime_milliseconds")
+            re:run(Metrics, "erlang_vm_statistics_runtime_seconds_total")
         ),
         ?_assertMatch(
             {match, _},
-            re:run(Metrics, "erlang_vm_statistics_wallclock_time_milliseconds")
+            re:run(Metrics, "erlang_vm_statistics_wallclock_time_seconds_total")
         )
     ].
 
@@ -81,16 +81,16 @@ test_all_metrics(_) ->
             [
                 bytes_output_total,
                 bytes_received_total,
-                context_switches,
+                context_switches_total,
                 dirty_cpu_run_queue_length,
                 dirty_io_run_queue_length,
-                garbage_collection_number_of_gcs,
-                garbage_collection_bytes_reclaimed,
-                garbage_collection_words_reclaimed,
+                garbage_collection_number_of_gcs_total,
+                garbage_collection_bytes_reclaimed_total,
+                garbage_collection_words_reclaimed_total,
                 reductions_total,
                 run_queues_length,
-                runtime_milliseconds,
-                wallclock_time_milliseconds
+                runtime_seconds_total,
+                wallclock_time_seconds_total
             ]
         ),
         prometheus_registry:register_collector(prometheus_vm_statistics_collector),
@@ -120,21 +120,21 @@ test_all_metrics(_) ->
                 {match, _},
                 re:run(
                     Metrics,
-                    "erlang_vm_statistics_garbage_collection_number_of_gcs"
+                    "erlang_vm_statistics_garbage_collection_number_of_gcs_total"
                 )
             ),
             ?_assertMatch(
                 {match, _},
                 re:run(
                     Metrics,
-                    "erlang_vm_statistics_garbage_collection_words_reclaimed"
+                    "erlang_vm_statistics_garbage_collection_words_reclaimed_total"
                 )
             ),
             ?_assertMatch(
                 {match, _},
                 re:run(
                     Metrics,
-                    "erlang_vm_statistics_garbage_collection_bytes_reclaimed"
+                    "erlang_vm_statistics_garbage_collection_bytes_reclaimed_total"
                 )
             ),
             ?_assertMatch(
@@ -147,11 +147,11 @@ test_all_metrics(_) ->
             ),
             ?_assertMatch(
                 {match, _},
-                re:run(Metrics, "erlang_vm_statistics_runtime_milliseconds")
+                re:run(Metrics, "erlang_vm_statistics_runtime_seconds_total")
             ),
             ?_assertMatch(
                 {match, _},
-                re:run(Metrics, "erlang_vm_statistics_wallclock_time_milliseconds")
+                re:run(Metrics, "erlang_vm_statistics_wallclock_time_seconds_total")
             )
         ]
     after
@@ -184,21 +184,21 @@ test_custom_metrics(_) ->
                 nomatch,
                 re:run(
                     Metrics,
-                    "erlang_vm_statistics_garbage_collection_number_of_gcs"
+                    "erlang_vm_statistics_garbage_collection_number_of_gcs_total"
                 )
             ),
             ?_assertMatch(
                 nomatch,
                 re:run(
                     Metrics,
-                    "erlang_vm_statistics_garbage_collection_words_reclaimed"
+                    "erlang_vm_statistics_garbage_collection_words_reclaimed_total"
                 )
             ),
             ?_assertMatch(
                 nomatch,
                 re:run(
                     Metrics,
-                    "erlang_vm_statistics_garbage_collection_bytes_reclaimed"
+                    "erlang_vm_statistics_garbage_collection_bytes_reclaimed_total"
                 )
             ),
             ?_assertMatch(
@@ -211,11 +211,11 @@ test_custom_metrics(_) ->
             ),
             ?_assertMatch(
                 nomatch,
-                re:run(Metrics, "erlang_vm_statistics_runtime_milliseconds")
+                re:run(Metrics, "erlang_vm_statistics_runtime_seconds_total")
             ),
             ?_assertMatch(
                 nomatch,
-                re:run(Metrics, "erlang_vm_statistics_wallclock_time_milliseconds")
+                re:run(Metrics, "erlang_vm_statistics_wallclock_time_seconds_total")
             )
         ]
     after

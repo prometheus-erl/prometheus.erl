@@ -21,9 +21,9 @@ test_default_metrics(_) ->
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_logical_processors")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_logical_processors_available")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_logical_processors_online")),
-        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_port_count")),
+        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_ports")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_port_limit")),
-        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_process_count")),
+        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_processes")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_process_limit")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_schedulers")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_schedulers_online")),
@@ -32,7 +32,7 @@ test_default_metrics(_) ->
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_thread_pool_size")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_time_correction")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_wordsize_bytes")),
-        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_atom_count")),
+        ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_atoms")),
         ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_atom_limit"))
     ].
 
@@ -46,9 +46,9 @@ test_all_metrics(_) ->
                 logical_processors,
                 logical_processors_available,
                 logical_processors_online,
-                port_count,
+                ports,
                 port_limit,
-                process_count,
+                processes,
                 process_limit,
                 schedulers,
                 schedulers_online,
@@ -57,7 +57,7 @@ test_all_metrics(_) ->
                 thread_pool_size,
                 time_correction,
                 wordsize_bytes,
-                atom_count,
+                atoms,
                 atom_limit
             ]
         ),
@@ -68,9 +68,9 @@ test_all_metrics(_) ->
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_logical_processors")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_logical_processors_available")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_logical_processors_online")),
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_port_count")),
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_ports")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_port_limit")),
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_process_count")),
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_processes")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_process_limit")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_schedulers")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_schedulers_online")),
@@ -79,7 +79,7 @@ test_all_metrics(_) ->
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_thread_pool_size")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_time_correction")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_wordsize_bytes")),
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_atom_count")),
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_atoms")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_atom_limit"))
         ]
     after
@@ -94,8 +94,8 @@ test_custom_metrics(_) ->
             [
                 ets_limit,
                 logical_processors,
-                port_count,
-                process_count,
+                ports,
+                processes,
                 process_limit,
                 schedulers
             ]
@@ -107,9 +107,9 @@ test_custom_metrics(_) ->
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_logical_processors")),
             ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_logical_processors_available")),
             ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_logical_processors_online")),
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_port_count")),
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_ports")),
             ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_port_limit")),
-            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_process_count")),
+            ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_processes")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_process_limit")),
             ?_assertMatch({match, _}, re:run(Metrics, "erlang_vm_schedulers")),
             ?_assertMatch(nomatch, re:run(Metrics, "erlang_vm_schedulers_online")),
