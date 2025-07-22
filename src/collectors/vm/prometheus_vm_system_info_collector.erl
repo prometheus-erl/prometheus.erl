@@ -127,7 +127,7 @@ deregister_cleanup(_) ->
     _Registry :: prometheus_registry:registry(),
     Callback :: prometheus_collector:collect_mf_callback().
 collect_mf(_Registry, Callback) ->
-    Metrics = metrics(),
+    Metrics = prometheus_collectors_compat:pre_promtool_compat(metrics()),
     EnabledMetrics = enabled_metrics(),
     [
         add_metric_family(Metric, Callback)

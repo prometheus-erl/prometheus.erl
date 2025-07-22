@@ -88,7 +88,7 @@ collect_mf(_Registry, Callback) ->
     case mnesia_running() of
         true ->
             EnabledMetrics = enabled_metrics(),
-            Metrics = metrics(EnabledMetrics),
+            Metrics = prometheus_collectors_compat:pre_promtool_compat(metrics(EnabledMetrics)),
             [
                 add_metric_family(Metric, Callback)
              || {Name, _, _, _} = Metric <- Metrics, metric_enabled(Name, EnabledMetrics)
