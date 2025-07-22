@@ -18,7 +18,7 @@ Collects Erlang VM metrics using `erlang:statistics/1`.
 * `erlang_vm_statistics_bytes_received_total`
   Type: counter.
   The total number of bytes received through ports.
-* `erlang_vm_statistics_context_switches`
+* `erlang_vm_statistics_context_switches_total`
   Type: counter.
   The total number of context switches since the system started.
 * `erlang_vm_statistics_dirty_cpu_run_queue_length`
@@ -27,13 +27,13 @@ Collects Erlang VM metrics using `erlang:statistics/1`.
 * `erlang_vm_statistics_dirty_io_run_queue_length`
   Type: gauge.
   Length of the dirty IO run-queue.
-* `erlang_vm_statistics_garbage_collection_number_of_gcs`
+* `erlang_vm_statistics_garbage_collection_number_of_gcs_total`
   Type: counter.
   The total number of garbage collections since the system started.
-* `erlang_vm_statistics_garbage_collection_words_reclaimed`
+* `erlang_vm_statistics_garbage_collection_words_reclaimed_total`
   Type: counter.
   The total number of words reclaimed by GC since the system started.
-* `erlang_vm_statistics_garbage_collection_bytes_reclaimed`
+* `erlang_vm_statistics_garbage_collection_bytes_reclaimed_total`
   Type: counter.
   The total number of bytes reclaimed by GC since the system started.
 * `erlang_vm_statistics_reductions_total`
@@ -43,12 +43,12 @@ Collects Erlang VM metrics using `erlang:statistics/1`.
   Type: gauge.
   The total length of all normal run-queues. That is, the number of processes and ports that
     are ready to run on all available normal run-queues.
-* `erlang_vm_statistics_runtime_milliseconds`
+* `erlang_vm_statistics_runtime_seconds_total`
   Type: counter.
   The sum of the runtime for all threads in the Erlang runtime system.
-* `erlang_vm_statistics_wallclock_time_milliseconds`
+* `erlang_vm_statistics_wallclock_time_seconds_total`
   Type: counter.
-  Can be used in the same manner as `erlang_vm_statistics_runtime_milliseconds`,
+  Can be used in the same manner as `erlang_vm_statistics_runtime_seconds_total`,
     except that real time is measured as opposed to runtime or CPU time.
 
 ### Configuration
@@ -65,8 +65,8 @@ Options are the same as the `Item` parameter values for `erlang:statistics/1`:
 * `io` for `erlang_vm_statistics_bytes_output_total` and `erlang_vm_statistics_bytes_received_total`;
 * `reductions` for `erlang_vm_statistics_reductions_total`;
 * `run_queue` for `erlang_vm_statistics_run_queues_length`;
-* `runtime` for `erlang_vm_statistics_runtime_milliseconds`;
-* `wall_clock` for `erlang_vm_statistics_wallclock_time_milliseconds`.
+* `runtime` for `erlang_vm_statistics_runtime_seconds_total`;
+* `wall_clock` for `erlang_vm_statistics_wallclock_time_seconds_total`.
 
 By default all metrics are enabled.
 """).
@@ -114,33 +114,31 @@ metrics() ->
     RunQueuesLength = erlang:statistics(run_queue),
     {Runtime, _} = erlang:statistics(runtime),
     {WallclockTime, _} = erlang:statistics(wall_clock),
-
     [
         {bytes_output_total, counter, "Total number of bytes output to ports.", Output},
         {bytes_received_total, counter, "Total number of bytes received through ports.", Input},
-        {context_switches, counter,
+        {context_switches_total, counter,
             "Total number of context switches "
             "since the system started.", ContextSwitches},
         {dirty_cpu_run_queue_length, gauge, "Length of the dirty CPU run-queue.",
             DirtyCPURunQueueLength},
         {dirty_io_run_queue_length, gauge, "Length of the dirty IO run-queue.",
             DirtyIORunQueueLength},
-        {garbage_collection_number_of_gcs, counter, "Garbage collection: number of GCs.",
+        {garbage_collection_number_of_gcs_total, counter, "Garbage collection: number of GCs.",
             NumberOfGCs},
-        {garbage_collection_bytes_reclaimed, counter, "Garbage collection: bytes reclaimed.",
+        {garbage_collection_bytes_reclaimed_total, counter, "Garbage collection: bytes reclaimed.",
             WordsReclaimed * WordSize},
-        {garbage_collection_words_reclaimed, counter, "Garbage collection: words reclaimed.",
+        {garbage_collection_words_reclaimed_total, counter, "Garbage collection: words reclaimed.",
             WordsReclaimed},
         {reductions_total, counter, "Total reductions.", ReductionsTotal},
-        %% TODO: 4.x remove _total
         {run_queues_length, gauge, "Length of normal run-queues.", RunQueuesLength},
-        {runtime_milliseconds, counter,
+        {runtime_seconds_total, counter,
             "The sum of the runtime for all threads "
             "in the Erlang runtime system. "
             "Can be greater than wall clock time.", Runtime},
-        {wallclock_time_milliseconds, counter,
+        {wallclock_time_seconds_total, counter,
             "Information about wall clock. "
-            "Same as erlang_vm_statistics_runtime_milliseconds "
+            "Same as erlang_vm_statistics_runtime_seconds "
             "except that real time is measured.", WallclockTime}
     ].
 
