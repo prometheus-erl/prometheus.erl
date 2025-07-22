@@ -1,5 +1,6 @@
 # Prometheus.io client for Erlang #
 
+[![Erlang/OTP Versions](https://img.shields.io/badge/erlang%2Fotp-26+-blue)](https://www.erlang.org)
 [![Hex.pm](https://img.shields.io/hexpm/v/prometheus.svg?maxAge=2592000?style=plastic)](https://hex.pm/packages/prometheus)
 [![Hex.pm](https://img.shields.io/hexpm/dt/prometheus.svg?maxAge=2592000)](https://hex.pm/packages/prometheus)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/prometheus/)
@@ -32,9 +33,8 @@
 
 ## Blogs
 
-- [Install, Monitor Erlang Releases in Kubernetes with Helm + Prometheus](https://spacetimeinsight.com/installing-monitoring-erlang-releases-kubernetes-helm-prometheus/)
-- [Monitoring Elixir apps in 2016: Prometheus and Grafana](https://aldusleaf.org/monitoring-elixir-apps-in-2016-prometheus-and-grafana/)
 - [A Simple Erlang Application, with Prometheus](https://markbucciarelli.com/posts/2016-11-23_a_simple_erlang_application_with_prometheus.html).
+- [Monitoring Elixir apps in 2016: Prometheus and Grafana](https://aldusleaf.org/monitoring-elixir-apps-in-2016-prometheus-and-grafana/)
 
 ## Erlang VM & OTP Collectors
 - [Memory Collector](https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_vm_memory_collector.md)
@@ -44,40 +44,33 @@
 
 ## Compatibility
 
-### OTP versions
-Version 3.x works on OTP18+. For older version (oldest tested is R16B03) please use
-[3.x-pre18 branch](https://github.com/deadtrickster/prometheus.erl/tree/3.x-pre18).
-3.x-pre18 will work on all OTP releases starting from R16B03 and its beam will recompile itself to accommodate.
-For example, this branch is used by [RabbitMQ Exporter](https://github.com/deadtrickster/prometheus_rabbitmq_exporter) 3.6.x
-that should be compatible with all versions starting from R16B03.
-
 ### Build tools
-Rebar3 is supported.
+[Rebar3](https://rebar3.org) is supported.
 
 ## Example Console Session
 
 Run shell with compiled and loaded app:
 
-```erlang-repl
-    $ rebar3 shell
+```shell
+rebar3 shell
 ```
 
-Start prometheus app:
+Start the Prometheus app:
 
-```erlang-repl
+```erlang
 prometheus:start().
 ```
 
 Register metrics:
 
 ```erlang
-prometheus_gauge:new([{name, pool_size}, {help, "MongoDB Connections pool size"}]),
-prometheus_counter:new([{name, http_requests_total}, {help, "Http request count"}]).
-prometheus_summary:new([{name, orders}, {help, "Track orders count/total sum"}]).
-prometheus_histogram:new([{name, http_request_duration_milliseconds},
-                               {labels, [method]},
-                               {buckets, [100, 300, 500, 750, 1000]},
-                               {help, "Http Request execution time"}]).
+prometheus_gauge:new(#{name => pool_size, help => "MongoDB Connections pool size"}),
+prometheus_counter:new(#{name => http_requests_total, help => "Http request count"}).
+prometheus_summary:new(#{name => orders, help => "Track orders count/total sum"}).
+prometheus_histogram:new(#{name => http_request_duration_milliseconds,
+                           labels => [method],
+                           buckets => [100, 300, 500, 750, 1000],
+                           help => "Http Request execution time"]).
 ```
 
 Use metrics:
@@ -143,6 +136,8 @@ http_request_duration_milliseconds_count{method="get"} 9
 http_request_duration_milliseconds_sum{method="get"} 2622
 ```
 
+To use a ready-made HTTP exporter, check out the [Inets HTTPD Exporter](https://github.com/deadtrickster/prometheus_httpd) or the [Cowboy1/2 Exporters](https://hex.pm/packages/prometheus_cowboy).
+
 ## API
 
 API can be grouped like this:
@@ -159,13 +154,13 @@ API can be grouped like this:
 All metrics created via `new/1` or `declare/1`. The difference is that `new/1` actually wants metric to be
 new and raises `{mf_already_exists, {Registry, Name}, Message}` error if it isn't.
 
-Both `new/1` and `declare/1` accept options as [proplist](http://erlang.org/doc/man/proplists.html).
+Both `new/1` and `declare/1` accept options as `t:proplists:proplist/0` or `t:map/0`.
 Common options are:
 
-- name - metric name, can be an atom or a string (required);
-- help - metric help, string (required);
-- labels - metric labels, label can be an atom or a string (default is []);
-- registry - Prometheus registry for the metric, can be any term. (default is default)
+- `name` - metric name, can be an atom or a string (required);
+- `help` - metric help, string (required);
+- `labels` - metric labels, label can be an atom or a string (default is []);
+- `registry` - Prometheus registry for the metric, can be any term. (default is `default`)
 
 Histogram also accepts `buckets` option. Please refer to respective modules docs for the more information.
 
@@ -191,8 +186,8 @@ You'll use that if you want to create a custom collector.
 
 ## Build
 
-```
-   $ rebar3 compile
+```shell
+rebar3 compile
 ```
 
 ## Configuration
@@ -229,5 +224,4 @@ Their configuration should be under `<collector_name>_collector`for erlang or `<
 ### Naming
 
 For Erlang: `prometheus_<name>_collector`/`prometheus_<name>_exporter`.
-
 For Elixir: `Prometheus.<name>Collector`/`Prometheus.<name>Exporter`.
