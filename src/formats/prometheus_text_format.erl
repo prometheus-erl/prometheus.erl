@@ -8,7 +8,7 @@
 -endif.
 
 ?MODULEDOC("""
-Serializes Prometheus registry using the latest [text format](http://bit.ly/2cxSuJP).
+Serializes Prometheus registry using the latest [text format](https://bit.ly/2cxSuJP).
 
 Example output:
 
@@ -38,7 +38,7 @@ http_request_duration_milliseconds_sum{method=\"post\"} 4350
 -compile({inline, [add_brackets/1, render_label_pair/1]}).
 
 ?DOC("""
-Returns content type of the latest \[text format](http://bit.ly/2cxSuJP).
+Returns content type of the latest \[text format](https://bit.ly/2cxSuJP).
 """).
 -spec content_type() -> binary().
 content_type() ->

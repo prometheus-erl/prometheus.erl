@@ -31,7 +31,7 @@ Mnesia can create different files for each table:
 - .LOGTMP: disc copies log
 
 More on Mnesia files can be found in
-[Mnesia System Information chapter](http://erlang.org/doc/apps/mnesia/Mnesia_chap7.html)
+[Mnesia System Information chapter](https://erlang.org/doc/apps/mnesia/Mnesia_chap7.html)
 of Mnesia User's Guide.
 """).
 -spec table_disk_size(Dir, Table) -> Size when
