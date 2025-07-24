@@ -21,10 +21,10 @@ Example:
 -module(my_proxy_instrumenter).
 
 setup() ->
-    prometheus_quantile_summary:declare([{name, request_size_bytes},
-                                         {help, \"Request size in bytes.\"}]),
-    prometheus_quantile_summary:declare([{name, response_size_bytes},
-                                         {help, \"Response size in bytes.\"}]).
+    prometheus_quantile_summary:declare(#{name => request_size_bytes,
+                                          help => \"Request size in bytes.\"}),
+    prometheus_quantile_summary:declare(#{name => response_size_bytes,
+                                          help => \"Response size in bytes.\"}).
 
 observe_request(Size) ->
     prometheus_quantile_summary:observe(request_size_bytes, Size).
@@ -45,7 +45,7 @@ request_size_bytes\{quantile=\"0.95\"\}
 ```
 
 ### Configuration
-See `t:ddskerl_ets:opts/0` for configuration options. These need to be passed as a proplist.
+It takes `error` and `bound` as in `t:ddskerl_ets:opts/0`.
 """).
 
 -define(WIDTH, 16).
