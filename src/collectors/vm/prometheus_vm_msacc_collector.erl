@@ -10,7 +10,7 @@
 ?MODULEDOC("""
 Collects microstate accounting metrics using
 [`erlang:statistics(microstate_accounting)`]
-(http://erlang.org/doc/man/erlang.html#statistics_microstate_accounting).
+(https://erlang.org/doc/man/erlang.html#statistics_microstate_accounting).
 
 In order for values to increase, microstate accounting must be enabled.
 This is done by calling `erlang:system_flag(microstate_accounting, true).`
@@ -82,7 +82,7 @@ of the `prometheus` app environment.
 
 Options are the same as MSAcc_Thread_State return type from
 [`erlang:statistics(microstate_accounting)`]
-(http://erlang.org/doc/man/erlang.html#statistics_microstate_accounting)
+(https://erlang.org/doc/man/erlang.html#statistics_microstate_accounting)
 with `_seconds_total` as the suffix:
 
 * `aux_seconds_total` for `erlang_vm_msacc_aux_seconds_total`.

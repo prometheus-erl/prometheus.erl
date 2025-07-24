@@ -15,7 +15,7 @@ Erlang has the standard `erlang:monotonic_time/0` function that returns so calle
 Native time units are meaningless and have to be converted to seconds (or other units) using
 `erlang:convert_time_unit/3`.
 However as `erlang:convert_time_unit/3` documentation
-[warns](http://erlang.org/doc/man/erlang.html#convert_time_unit-3):
+[warns](https://erlang.org/doc/man/erlang.html#convert_time_unit-3):
 
 > You may lose accuracy and precision when converting between  time units.
 > In order to minimize such loss, collect all data at native time unit and

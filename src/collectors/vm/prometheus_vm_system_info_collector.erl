@@ -33,7 +33,7 @@ Collects Erlang VM metrics using `erlang:system_info/1`.
 * `erlang_vm_logical_processors_online`
   Type: gauge.
   The detected number of logical processors online on the system.
-* `erlang_vm_port_count`
+* `erlang_vm_ports`
   Type: gauge.
   The number of ports currently existing at the local node.
 * `erlang_vm_port_limit`
@@ -66,7 +66,7 @@ Collects Erlang VM metrics using `erlang:system_info/1`.
 * `erlang_vm_wordsize_bytes`
   Type: gauge.
   The size of Erlang term words in bytes.
-* `erlang_vm_atom_count`
+* `erlang_vm_atoms`
   Type: gauge.
   The number of atom currently existing at the local node.
 * `erlang_vm_atom_limit`
@@ -88,7 +88,7 @@ Options are the same as Item parameter values for `erlang:system_info/1`:
 * `logical_processors` for `erlang_vm_logical_processors`.
 * `logical_processors_available` for `erlang_vm_logical_processors_available`.
 * `logical_processors_online` for `erlang_vm_logical_processors_online`.
-* `port_count` for `erlang_vm_port_count`.
+* `ports` for `erlang_vm_ports`.
 * `port_limit` for `erlang_vm_port_limit`.
 * `process_count` for `erlang_vm_process_count`.
 * `process_limit` for `erlang_vm_process_limit`.
@@ -99,7 +99,7 @@ Options are the same as Item parameter values for `erlang:system_info/1`:
 * `thread_pool_size` for `erlang_vm_thread_pool_size`.
 * `time_correction` for `erlang_vm_time_correction`.
 * `wordsize_bytes` for `erlang_vm_wordsize_bytes`.
-* `atom_count` for `erlang_vm_atom_count`.
+* `atoms` for `erlang_vm_atoms`.
 * `atom_limit` for `erlang_vm_atom_limit`.
 * `allocators` for `erlang_vm_allocators`.
 
@@ -127,7 +127,7 @@ deregister_cleanup(_) ->
     _Registry :: prometheus_registry:registry(),
     Callback :: prometheus_collector:collect_mf_callback().
 collect_mf(_Registry, Callback) ->
-    Metrics = metrics(),
+    Metrics = prometheus_collectors_compat:pre_promtool_compat(metrics()),
     EnabledMetrics = enabled_metrics(),
     [
         add_metric_family(Metric, Callback)
@@ -163,13 +163,13 @@ metrics() ->
         {logical_processors_online, gauge,
             "The detected number of logical processors "
             "online on the system."},
-        {port_count, gauge,
+        {ports, gauge,
             "The number of ports currently existing "
             "at the local node."},
         {port_limit, gauge,
             "The maximum number of simultaneously existing ports "
             "at the local node."},
-        {process_count, gauge,
+        {processes, gauge,
             "The number of processes currently existing "
             "at the local node."},
         {process_limit, gauge,
@@ -188,7 +188,7 @@ metrics() ->
             "used for asynchronous driver calls."},
         {time_correction, boolean, "1 if time correction is enabled, otherwise 0."},
         {wordsize_bytes, gauge, "The size of Erlang term words in bytes."},
-        {atom_count, gauge,
+        {atoms, gauge,
             "The number of atom currently existing "
             "at the local node."},
         {atom_limit, gauge,

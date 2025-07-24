@@ -13,11 +13,11 @@ Collects information about memory dynamically allocated by the Erlang emulator u
 
 ### Exported metrics
 
-* `erlang_vm_memory_atom_bytes_total{usage=\"free|used\"}`
+* `erlang_vm_memory_atom_bytes{usage=\"free|used\"}`
   Type: gauge.
   The total amount of memory currently allocated for atoms.
     This memory is part of the memory presented as system memory.
-* `erlang_vm_memory_bytes_total{kind=\"system|processes\"}`
+* `erlang_vm_memory_bytes{kind=\"system|processes\"}`
   Type: gauge.
   The total amount of memory currently allocated.
     This is the same as the sum of the memory size for processes and system.
@@ -27,10 +27,10 @@ Collects information about memory dynamically allocated by the Erlang emulator u
 * `erlang_vm_memory_ets_tables`
   Type: gauge.
   Erlang VM ETS Tables count.
-* `erlang_vm_memory_processes_bytes_total{usage=\"free|used\"}`
+* `erlang_vm_memory_processes_bytes{usage=\"free|used\"}`
   Type: gauge.
   The total amount of memory currently allocated for the Erlang processes.
-* `erlang_vm_memory_system_bytes_total{usage=\"atom|binary|code|ets|other\"}`
+* `erlang_vm_memory_system_bytes{usage=\"atom|binary|code|ets|other\"}`
   Type: gauge.
   The total amount of memory currently allocated for the emulator that is not directly related
     to any Erlang process. Memory presented as processes is not included in this memory.
@@ -42,12 +42,12 @@ of the `prometheus` app environment.
 
 Available options:
 
-* `atom_bytes_total` for `erlang_vm_memory_atom_bytes_total`.
-* `bytes_total` for `erlang_vm_memory_bytes_total`.
+* `atom_bytes` for `erlang_vm_memory_atom_bytes`.
+* `bytes` for `erlang_vm_memory_bytes`.
 * `dets_tables` for `erlang_vm_dets_tables`.
 * `ets_tables` for `erlang_vm_ets_tables`.
-* `processes_bytes_total` for `erlang_vm_memory_processes_bytes_total`.
-* `system_bytes_total` for `erlang_vm_memory_system_bytes_total`.
+* `processes_bytes` for `erlang_vm_memory_processes_bytes`.
+* `system_bytes` for `erlang_vm_memory_system_bytes`.
 
 By default all metrics are enabled.
 """).
@@ -70,7 +70,7 @@ deregister_cleanup(_) ->
     _Registry :: prometheus_registry:registry(),
     Callback :: prometheus_collector:collect_mf_callback().
 collect_mf(_Registry, Callback) ->
-    Metrics = metrics(),
+    Metrics = prometheus_collectors_compat:pre_promtool_compat(metrics()),
     EnabledMetrics = enabled_metrics(),
     [
         add_metric_family(Metric, Callback)
@@ -88,7 +88,7 @@ add_metric_family({Name, Type, Help, Metrics}, Callback) ->
 metrics() ->
     Data = erlang:memory(),
     [
-        {atom_bytes_total, gauge,
+        {atom_bytes, gauge,
             "The total amount of memory currently allocated "
             "for atoms. This memory is part of the memory "
             "presented as system memory.", [
@@ -98,7 +98,7 @@ metrics() ->
                     proplists:get_value(atom, Data) - proplists:get_value(atom_used, Data)
                 }
             ]},
-        {bytes_total, gauge,
+        {bytes, gauge,
             "The total amount of memory currently allocated. "
             "This is the same as the sum of the memory size "
             "for processes and system.", [
@@ -107,7 +107,7 @@ metrics() ->
             ]},
         {dets_tables, gauge, "Erlang VM DETS Tables count.", length(dets:all())},
         {ets_tables, gauge, "Erlang VM ETS Tables count.", length(ets:all())},
-        {processes_bytes_total, gauge,
+        {processes_bytes, gauge,
             "The total amount of memory currently allocated "
             "for the Erlang processes.", [
                 {[{usage, used}], proplists:get_value(processes_used, Data)},
@@ -116,7 +116,7 @@ metrics() ->
                     proplists:get_value(processes, Data) - proplists:get_value(processes_used, Data)
                 }
             ]},
-        {system_bytes_total, gauge,
+        {system_bytes, gauge,
             "The total amount of memory currently allocated "
             "for the emulator that is not directly related "
             "to any Erlang process. Memory presented as processes "

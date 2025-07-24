@@ -24,16 +24,16 @@ Collects Mnesia metrics mainly using `mnesia:system_info/1`.
 * `erlang_mnesia_transaction_coordinators`
   Type: gauge.
   Number of coordinator transactions.
-* `erlang_mnesia_failed_transactions`
+* `erlang_mnesia_failed_transactions_total`
   Type: counter.
   Number of failed (i.e. aborted) transactions.
-* `erlang_mnesia_committed_transactions`
+* `erlang_mnesia_committed_transactions_total`
   Type: gauge.
   Number of committed transactions.
-* `erlang_mnesia_logged_transactions`
+* `erlang_mnesia_logged_transactions_total`
   Type: counter.
   Number of transactions logged.
-* `erlang_mnesia_restarted_transactions`
+* `erlang_mnesia_restarted_transactions_total`
   Type: counter.
   Total number of transaction restarts.
 * `erlang_mnesia_memory_usage_bytes`
@@ -56,10 +56,10 @@ Available options:
 - `lock_queue` for `erlang_mnesia_lock_queue`;
 - `transaction_participants` for `erlang_mnesia_transaction_participants`;
 - `transaction_coordinators` for `erlang_mnesia_transaction_coordinators`;
-- `transaction_failures` for `erlang_mnesia_failed_transactions`;
-- `transaction_commits` for `erlang_mnesia_committed_transactions`;
-- `transaction_log_writes` for `erlang_mnesia_logged_transactions`;
-- `transaction_restarts` for `erlang_mnesia_restarted_transactions`;
+- `transaction_failures` for `erlang_mnesia_failed_transactions_total`;
+- `transaction_commits` for `erlang_mnesia_committed_transactions_total`;
+- `transaction_log_writes` for `erlang_mnesia_logged_transactions_total`;
+- `transaction_restarts` for `erlang_mnesia_restarted_transactions_total`;
 - `memory_usage_bytes` for `erlang_mnesia_memory_usage_bytes`.
 
 By default all metrics are enabled.
@@ -88,7 +88,7 @@ collect_mf(_Registry, Callback) ->
     case mnesia_running() of
         true ->
             EnabledMetrics = enabled_metrics(),
-            Metrics = metrics(EnabledMetrics),
+            Metrics = prometheus_collectors_compat:pre_promtool_compat(metrics(EnabledMetrics)),
             [
                 add_metric_family(Metric, Callback)
              || {Name, _, _, _} = Metric <- Metrics, metric_enabled(Name, EnabledMetrics)
@@ -118,16 +118,17 @@ metrics(EnabledMetrics) ->
         {transaction_coordinators, gauge, "Number of coordinator transactions.", fun() ->
             Coordinators
         end},
-        {failed_transactions, counter, "Number of failed (i.e. aborted) transactions.", fun() ->
-            mnesia:system_info(transaction_failures)
-        end},
-        {committed_transactions, counter, "Number of committed transactions.", fun() ->
+        {failed_transactions_total, counter, "Number of failed (i.e. aborted) transactions.",
+            fun() ->
+                mnesia:system_info(transaction_failures)
+            end},
+        {committed_transactions_total, counter, "Number of committed transactions.", fun() ->
             mnesia:system_info(transaction_commits)
         end},
-        {logged_transactions, counter, "Number of transactions logged.", fun() ->
+        {logged_transactions_total, counter, "Number of transactions logged.", fun() ->
             mnesia:system_info(transaction_log_writes)
         end},
-        {restarted_transactions, counter, "Total number of transaction restarts.", fun() ->
+        {restarted_transactions_total, counter, "Total number of transaction restarts.", fun() ->
             mnesia:system_info(transaction_restarts)
         end},
         {memory_usage_bytes, gauge, "Total number of bytes allocated by all mnesia tables", fun() ->

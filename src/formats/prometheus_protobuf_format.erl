@@ -8,7 +8,7 @@
 -endif.
 
 ?MODULEDOC("""
-Serializes Prometheus registry using [protocol buffer format](http://bit.ly/2cxSuJP).
+Serializes Prometheus registry using [protocol buffer format](https://bit.ly/2cxSuJP).
 """).
 
 -export([content_type/0, format/0, format/1]).
