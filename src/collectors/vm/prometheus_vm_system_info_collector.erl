@@ -39,7 +39,7 @@ Collects Erlang VM metrics using `erlang:system_info/1`.
 * `erlang_vm_port_limit`
   Type: gauge.
   The maximum number of simultaneously existing ports at the local node.
-* `erlang_vm_process_count`
+* `erlang_vm_processes`
   Type: gauge.
   The number of processes currently existing at the local node.
 * `erlang_vm_process_limit`
@@ -90,7 +90,7 @@ Options are the same as Item parameter values for `erlang:system_info/1`:
 * `logical_processors_online` for `erlang_vm_logical_processors_online`.
 * `ports` for `erlang_vm_ports`.
 * `port_limit` for `erlang_vm_port_limit`.
-* `process_count` for `erlang_vm_process_count`.
+* `processes` for `erlang_vm_processes`.
 * `process_limit` for `erlang_vm_process_limit`.
 * `schedulers` for `erlang_vm_schedulers`.
 * `schedulers_online` for `erlang_vm_schedulers_online`.
@@ -204,6 +204,12 @@ collect_metrics(allocators) ->
     collect_allocator_metrics();
 collect_metrics(wordsize_bytes) ->
     erlang:system_info(wordsize);
+collect_metrics(atoms) ->
+    erlang:system_info(atom_count);
+collect_metrics(ports) ->
+    erlang:system_info(port_count);
+collect_metrics(processes) ->
+    erlang:system_info(process_count);
 collect_metrics(Name) ->
     try
         case erlang:system_info(Name) of
