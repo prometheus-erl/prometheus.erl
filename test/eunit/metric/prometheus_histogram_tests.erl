@@ -88,7 +88,23 @@ test_errors(_) ->
             {invalid_metric_label_name, "le", "histogram cannot have a label named \"le\""},
             prometheus_histogram:new([
                 {name, "qwe"},
+                {labels, ["qwe", le]},
+                {help, ""}
+            ])
+        ),
+        ?_assertError(
+            {invalid_metric_label_name, "le", "histogram cannot have a label named \"le\""},
+            prometheus_histogram:new([
+                {name, "qwe"},
                 {labels, ["qwe", "le"]},
+                {help, ""}
+            ])
+        ),
+        ?_assertError(
+            {invalid_metric_label_name, "le", "histogram cannot have a label named \"le\""},
+            prometheus_histogram:new([
+                {name, "qwe"},
+                {labels, ["qwe", <<"le">>]},
                 {help, ""}
             ])
         ),

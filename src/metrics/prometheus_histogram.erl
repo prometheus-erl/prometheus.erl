@@ -525,7 +525,11 @@ validate_histogram_spec(Spec) ->
 validate_histogram_labels(Labels) ->
     [raise_error_if_le_label_found(Label) || Label <- Labels].
 
+raise_error_if_le_label_found(le) ->
+    erlang:error({invalid_metric_label_name, "le", "histogram cannot have a label named \"le\""});
 raise_error_if_le_label_found("le") ->
+    erlang:error({invalid_metric_label_name, "le", "histogram cannot have a label named \"le\""});
+raise_error_if_le_label_found(<<"le">>) ->
     erlang:error({invalid_metric_label_name, "le", "histogram cannot have a label named \"le\""});
 raise_error_if_le_label_found(Label) ->
     Label.
