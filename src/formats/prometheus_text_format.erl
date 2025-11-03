@@ -26,10 +26,10 @@ http_request_duration_milliseconds_sum{method=\"post\"} 4350
 ```
 """).
 
--export([content_type/0, format/0, format/1, render_labels/1, escape_label_value/1]).
+-export([content_type/0, format/0, format/1, format_into/3, render_labels/1, escape_label_value/1]).
 
 -ifdef(TEST).
--export([escape_metric_help/1, emit_mf_prologue/2, emit_mf_metrics/2]).
+-export([escape_metric_help/1, emit_mf_prologue/3, emit_mf_metrics/3]).
 -endif.
 
 -include("prometheus_model.hrl").
@@ -57,16 +57,35 @@ format() ->
 ?DOC("Formats `Registry` using the latest text format.").
 -spec format(Registry :: prometheus_registry:registry()) -> binary().
 format(Registry) ->
-    {ok, Fd} = ram_file:open("", [write, read, binary]),
+    {ok, Fd0} = ram_file:open("", [write, read, binary]),
+    FormatCallback = fun
+        (Fd, Data) when is_list(Data) orelse is_binary(Data) ->
+            file:write(Fd, Data);
+        (Fd, eof) ->
+            {ok, Size} = ram_file:get_size(Fd),
+            {ok, Str} = file:pread(Fd, 0, Size),
+            ok = file:close(Fd),
+            Str
+    end,
+    format_into(Registry, FormatCallback, Fd0).
+
+?DOC("""
+Formats `Registry` using the latest text format.
+
+`Callback` is a function that two arguments: `State` and `iodata()` or `'eof'`.
+The callback is called repeatedly with iodata as the registry is formatted.
+When the registry has been completely formatted, the callback is called again
+with `'eof'` as the second argument. The return value of the callback when
+called with `'eof'` is the return value of this function.
+""").
+-spec format_into(Registry :: prometheus_registry:registry(), FmtCallback :: fun(), State :: term()) -> term().
+format_into(Registry, FmtCallback, FmtState) when is_function(FmtCallback, 2) ->
     Callback = fun(_, Collector) ->
-        registry_collect_callback(Fd, Registry, Collector)
+        registry_collect_callback(FmtCallback, FmtState, Registry, Collector)
     end,
     prometheus_registry:collect(Registry, Callback),
-    file:write(Fd, "\n"),
-    {ok, Size} = ram_file:get_size(Fd),
-    {ok, Str} = file:pread(Fd, 0, Size),
-    ok = file:close(Fd),
-    Str.
+    FmtCallback(FmtState, "\n"),
+    FmtCallback(FmtState, eof).
 
 ?DOC("""
 Escapes the backslash (\\), double-quote (\"), and line feed (\\n) characters
@@ -84,16 +103,16 @@ escape_label_value(LValue) when is_list(LValue) ->
 escape_label_value(Value) ->
     erlang:error({invalid_value, Value}).
 
-registry_collect_callback(Fd, Registry, Collector) ->
+registry_collect_callback(FmtCallback, FmtState, Registry, Collector) ->
     Callback = fun(MF) ->
-        emit_mf_prologue(Fd, MF),
-        emit_mf_metrics(Fd, MF)
+        emit_mf_prologue(FmtCallback, FmtState, MF),
+        emit_mf_metrics(FmtCallback, FmtState, MF)
     end,
     prometheus_collector:collect_mf(Registry, Collector, Callback).
 
 ?DOC(false).
--spec emit_mf_prologue(Fd :: file:fd(), prometheus_model:'MetricFamily'()) -> ok.
-emit_mf_prologue(Fd, #'MetricFamily'{name = Name, help = Help, type = Type}) ->
+-spec emit_mf_prologue(fun(), term(), prometheus_model:'MetricFamily'()) -> ok.
+emit_mf_prologue(FmtCallback, FmtState, #'MetricFamily'{name = Name, help = Help, type = Type}) ->
     Bytes = [
         "# TYPE ",
         Name,
@@ -105,11 +124,11 @@ emit_mf_prologue(Fd, #'MetricFamily'{name = Name, help = Help, type = Type}) ->
         escape_metric_help(Help),
         "\n"
     ],
-    file:write(Fd, Bytes).
+    FmtCallback(FmtState, Bytes).
 
 ?DOC(false).
--spec emit_mf_metrics(file:fd(), prometheus_model:'MetricFamily'()) -> ok | {error, term()}.
-emit_mf_metrics(Fd, #'MetricFamily'{name = Name, metric = Metrics}) ->
+-spec emit_mf_metrics(fun(), term(), prometheus_model:'MetricFamily'()) -> ok | {error, term()}.
+emit_mf_metrics(FmtCallback, FmtState, #'MetricFamily'{name = Name, metric = Metrics}) ->
     %% file:write/2 is an expensive operation, as it goes through a port driver.
     %% Instead a large chunk of bytes is being collected here, in a
     %% way that triggers binary append optimization in ERTS.
@@ -120,7 +139,7 @@ emit_mf_metrics(Fd, #'MetricFamily'{name = Name, metric = Metrics}) ->
         <<>>,
         Metrics
     ),
-    file:write(Fd, Bytes).
+    FmtCallback(FmtState, Bytes).
 
 render_metric(Name, #'Metric'{label = Labels, counter = #'Counter'{value = Value}}) ->
     render_series(Name, render_labels(Labels), Value);
