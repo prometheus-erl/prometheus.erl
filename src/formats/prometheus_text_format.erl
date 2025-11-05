@@ -289,12 +289,11 @@ escape_label_char(X) ->
 
 ?DOC(false).
 -spec has_special_char(binary()) -> boolean().
-has_special_char(<<C:8, _/bitstring>>) when C =:= $\\; C =:= $\n; C =:= $" ->
-    true;
-has_special_char(<<_:8, Rest/bitstring>>) ->
-    has_special_char(Rest);
-has_special_char(<<>>) ->
-    false.
+has_special_char(Subject) when is_binary(Subject) ->
+    %% See prometheus_sup:setup_persistent_terms/0.
+    %% Pattern checks for backslash, linefeed or double quote characters.
+    Pattern = persistent_term:get(prometheus_text_format_escape_pattern),
+    binary:match(Subject, Pattern) /= nomatch.
 
 ?DOC(false).
 escape_string(Fun, Str) when is_binary(Str) ->
