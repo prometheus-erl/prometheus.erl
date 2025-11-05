@@ -25,6 +25,7 @@ init([]) ->
     register_collectors(),
     register_metrics(),
     setup_instrumenters(),
+    setup_persistent_terms(),
     {ok, {{one_for_one, 5, 1}, []}}.
 
 %%====================================================================
@@ -92,3 +93,8 @@ declare_metric(boolean, Spec) ->
     prometheus_boolean:declare(Spec);
 declare_metric(Other, Spec) ->
     Other:declare(Spec).
+
+setup_persistent_terms() ->
+    %% See prometheus_text_format:has_special_char/1.
+    Pattern = binary:compile_pattern([<<$\\>>, <<$\n>>, <<$">>]),
+    ok = persistent_term:put(prometheus_text_format_escape_pattern, Pattern).
