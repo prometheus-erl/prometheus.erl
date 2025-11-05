@@ -289,12 +289,15 @@ escape_label_char(X) ->
 
 ?DOC(false).
 -spec has_special_char(binary()) -> boolean().
-has_special_char(<<C:8, _/bitstring>>) when C =:= $\\; C =:= $\n; C =:= $" ->
-    true;
-has_special_char(<<_:8, Rest/bitstring>>) ->
-    has_special_char(Rest);
-has_special_char(<<>>) ->
-    false.
+has_special_char(Subject) when is_binary(Subject) ->
+    case persistent_term:get(prometheus_text_format_escape_pattern, undefined) of
+        undefined ->
+            Pat = binary:compile_pattern([<<$\\>>, <<$\n>>, <<$">>]),
+            persistent_term:put(prometheus_text_format_escape_pattern, Pat),
+            has_special_char(Subject);
+        Pat ->
+            binary:match(Subject, Pat) /= nomatch
+    end.
 
 ?DOC(false).
 escape_string(Fun, Str) when is_binary(Str) ->
