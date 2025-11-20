@@ -29,13 +29,13 @@ http_request_duration_milliseconds_sum{method=\"post\"} 4350
 -export([content_type/0, format/0, format/1, render_labels/1, escape_label_value/1]).
 
 -ifdef(TEST).
--export([escape_metric_help/1, emit_mf_prologue/2, emit_mf_metrics/2]).
+-export([escape_metric_help/1]).
 -endif.
 
 -include("prometheus_model.hrl").
 
 -behaviour(prometheus_format).
--compile({inline, [add_brackets/1, render_label_pair/1]}).
+-compile({inline, [render_label_pair/1]}).
 
 ?DOC("""
 Returns content type of the latest \[text format](https://bit.ly/2cxSuJP).
@@ -85,50 +85,40 @@ escape_label_value(Value) ->
     erlang:error({invalid_value, Value}).
 
 registry_collect_callback(Fd, Registry, Collector) ->
-    Callback = fun(MF) ->
-        emit_mf_prologue(Fd, MF),
-        emit_mf_metrics(Fd, MF)
+    Callback = fun(#'MetricFamily'{name = Name0, help = Help, type = Type, metric = Metrics}) ->
+        %% eagerly convert the name to a binary so we can copy more efficiently
+        %% in `render_metrics/3`
+        Name = iolist_to_binary(Name0),
+        Prologue = <<
+            "# TYPE ",
+            Name/binary,
+            " ",
+            (string_type(Type))/binary,
+            "\n# HELP ",
+            Name/binary,
+            " ",
+            (escape_metric_help(Help))/binary,
+            "\n"
+        >>,
+        %% file:write/2 is an expensive operation, as it goes through a port driver.
+        %% Instead a large chunk of bytes is being collected here, in a
+        %% way that triggers binary append optimization in ERTS.
+        file:write(Fd, render_metrics(Name, Metrics, Prologue))
     end,
     prometheus_collector:collect_mf(Registry, Collector, Callback).
 
-?DOC(false).
--spec emit_mf_prologue(Fd :: file:fd(), prometheus_model:'MetricFamily'()) -> ok.
-emit_mf_prologue(Fd, #'MetricFamily'{name = Name, help = Help, type = Type}) ->
-    Bytes = [
-        "# TYPE ",
-        Name,
-        " ",
-        string_type(Type),
-        "\n# HELP ",
-        Name,
-        " ",
-        escape_metric_help(Help),
-        "\n"
-    ],
-    file:write(Fd, Bytes).
+render_metrics(Bytes, _Name, []) ->
+    Bytes;
+render_metrics(Bytes, Name, [Metric | Rest]) ->
+    render_metrics(render_metric(Bytes, Name, Metric), Name, Rest).
 
-?DOC(false).
--spec emit_mf_metrics(file:fd(), prometheus_model:'MetricFamily'()) -> ok | {error, term()}.
-emit_mf_metrics(Fd, #'MetricFamily'{name = Name, metric = Metrics}) ->
-    %% file:write/2 is an expensive operation, as it goes through a port driver.
-    %% Instead a large chunk of bytes is being collected here, in a
-    %% way that triggers binary append optimization in ERTS.
-    Bytes = lists:foldl(
-        fun(Metric, Blob) ->
-            <<Blob/binary, (render_metric(Name, Metric))/binary>>
-        end,
-        <<>>,
-        Metrics
-    ),
-    file:write(Fd, Bytes).
-
-render_metric(Name, #'Metric'{label = Labels, counter = #'Counter'{value = Value}}) ->
-    render_series(Name, render_labels(Labels), Value);
-render_metric(Name, #'Metric'{label = Labels, gauge = #'Gauge'{value = Value}}) ->
-    render_series(Name, render_labels(Labels), Value);
-render_metric(Name, #'Metric'{label = Labels, untyped = #'Untyped'{value = Value}}) ->
-    render_series(Name, render_labels(Labels), Value);
-render_metric(Name, #'Metric'{
+render_metric(Bytes0, Name, #'Metric'{label = Labels, counter = #'Counter'{value = Value}}) ->
+    render_series(Bytes0, Name, render_labels(Labels), Value);
+render_metric(Bytes0, Name, #'Metric'{label = Labels, gauge = #'Gauge'{value = Value}}) ->
+    render_series(Bytes0, Name, render_labels(Labels), Value);
+render_metric(Bytes0, Name, #'Metric'{label = Labels, untyped = #'Untyped'{value = Value}}) ->
+    render_series(Bytes0, Name, render_labels(Labels), Value);
+render_metric(Bytes0, Name, #'Metric'{
     label = Labels,
     summary = #'Summary'{
         sample_count = Count,
@@ -137,12 +127,13 @@ render_metric(Name, #'Metric'{
     }
 }) ->
     LString = render_labels(Labels),
-    Bytes1 = render_series([Name, "_count"], LString, Count),
-    Bytes2 = <<Bytes1/binary, (render_series([Name, "_sum"], LString, Sum))/binary>>,
-    Bytes3 = lists:foldl(
+    Bytes1 = render_series(Bytes0, <<Name/binary, "_count">>, LString, Count),
+    Bytes2 = render_series(Bytes1, <<Name/binary, "_sum">>, LString, Sum),
+    lists:foldl(
         fun(#'Quantile'{quantile = QN, value = QV}, Blob) ->
-            Val = render_series(
-                [Name],
+            render_series(
+                Blob,
+                Name,
                 render_labels(
                     [
                         LString,
@@ -153,14 +144,12 @@ render_metric(Name, #'Metric'{
                     ]
                 ),
                 QV
-            ),
-            <<Blob/binary, Val/binary>>
+            )
         end,
         Bytes2,
         Quantiles
-    ),
-    Bytes3;
-render_metric(Name, #'Metric'{
+    );
+render_metric(Bytes0, Name, #'Metric'{
     label = Labels,
     histogram = #'Histogram'{
         sample_count = Count,
@@ -172,33 +161,35 @@ render_metric(Name, #'Metric'{
     LString = render_labels(Labels),
     Bytes1 = lists:foldl(
         fun(Bucket, Blob) ->
-            <<Blob/binary, (emit_histogram_bucket(Name, LString, Bucket))/binary>>
+            emit_histogram_bucket(Blob, Name, LString, Bucket)
         end,
-        <<>>,
+        Bytes0,
         Buckets
     ),
-    Bytes2 = <<Bytes1/binary, (render_series([Name, "_count"], LString, Count))/binary>>,
-    Bytes3 = <<Bytes2/binary, (render_series([Name, "_sum"], LString, Sum))/binary>>,
-    Bytes3.
+    Bytes2 = render_series(Bytes1, <<Name/binary, "_count">>, LString, Count),
+    render_series(Bytes2, <<Name/binary, "_sum">>, LString, Sum).
 
-emit_histogram_bucket(Name, LString, #'Bucket'{cumulative_count = BCount, upper_bound = BBound}) ->
+emit_histogram_bucket(Bytes0, Name, LString, #'Bucket'{
+    cumulative_count = BCount, upper_bound = BBound
+}) ->
     BLValue = bound_to_label_value(BBound),
     render_series(
-        [Name, "_bucket"],
+        Bytes0,
+        <<Name/binary, "_bucket">>,
         render_labels([LString, #'LabelPair'{name = "le", value = BLValue}]),
         BCount
     ).
 
 string_type('COUNTER') ->
-    "counter";
+    <<"counter">>;
 string_type('GAUGE') ->
-    "gauge";
+    <<"gauge">>;
 string_type('SUMMARY') ->
-    "summary";
+    <<"summary">>;
 string_type('HISTOGRAM') ->
-    "histogram";
+    <<"histogram">>;
 string_type('UNTYPED') ->
-    "untyped".
+    <<"untyped">>.
 
 %% binary() in spec means 0 or more already rendered labels (name,
 %% escaped value), joined with "," in between
@@ -233,29 +224,22 @@ render_label_pair(B) when is_binary(B) ->
 render_label_pair(#'LabelPair'{name = Name, value = Value}) ->
     <<(iolist_to_binary(Name))/binary, "=\"", (escape_label_value(Value))/binary, "\"">>.
 
-add_brackets(<<>>) ->
-    <<>>;
-add_brackets(LString) ->
-    <<"{", LString/binary, "}">>.
+render_series(Bytes, Name, <<>>, Value) ->
+    render_value(<<Bytes/binary, Name/binary, " ">>, Value);
+render_series(Bytes, Name, LString, Value) ->
+    render_value(<<Bytes/binary, Name/binary, "{", LString/binary, "} ">>, Value).
 
-render_series(Name, LString, undefined) ->
-    <<(iolist_to_binary(Name))/binary, (add_brackets(LString))/binary, " NaN\n">>;
-render_series(Name, LString, Value) when is_integer(Value) ->
-    <<
-        (iolist_to_binary(Name))/binary,
-        (add_brackets(LString))/binary,
-        " ",
-        (integer_to_binary(Value))/binary,
-        "\n"
-    >>;
-render_series(Name, LString, Value) ->
-    <<
-        (iolist_to_binary(Name))/binary,
-        (add_brackets(LString))/binary,
-        " ",
-        (iolist_to_binary(io_lib:format("~p", [Value])))/binary,
-        "\n"
-    >>.
+render_value(Bytes, undefined) ->
+    <<Bytes/binary, "NaN\n">>;
+render_value(Bytes, Value) when is_integer(Value) ->
+    <<Bytes/binary, (integer_to_binary(Value))/binary, "\n">>;
+render_value(Bytes, Value) when is_float(Value) ->
+    %% TODO: should bound_to_label_value/1 and render_value/2 use the same
+    %% options in float_to_binary/2? io_lib uses [short] but
+    %% bound_to_label_value/1 has always used [{decimals,10},compact].
+    <<Bytes/binary, (float_to_binary(Value, [short]))/binary, "\n">>;
+render_value(Bytes, Value) ->
+    <<Bytes/binary, (iolist_to_binary(io_lib:format("~p", [Value])))/binary, "\n">>.
 
 ?DOC(false).
 -spec escape_metric_help(iodata()) -> binary().
@@ -271,11 +255,11 @@ escape_help_char(X) ->
     <<X>>.
 
 bound_to_label_value(Bound) when is_integer(Bound) ->
-    integer_to_list(Bound);
+    integer_to_binary(Bound);
 bound_to_label_value(Bound) when is_float(Bound) ->
-    float_to_list(Bound, [{decimals, 10}, compact]);
+    float_to_binary(Bound, [{decimals, 10}, compact]);
 bound_to_label_value(infinity) ->
-    "+Inf".
+    <<"+Inf">>.
 
 ?DOC(false).
 escape_label_char($\\ = X) ->
