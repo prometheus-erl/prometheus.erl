@@ -26,7 +26,7 @@ http_request_duration_milliseconds_sum{method=\"post\"} 4350
 ```
 """).
 
--export([content_type/0, format/0, format/1, render_labels/1, escape_label_value/1]).
+-export([content_type/0, format/0, format/1, format_into/3, render_labels/1, escape_label_value/1]).
 
 -ifdef(TEST).
 -export([escape_metric_help/1]).
@@ -57,16 +57,52 @@ format() ->
 ?DOC("Formats `Registry` using the latest text format.").
 -spec format(Registry :: prometheus_registry:registry()) -> binary().
 format(Registry) ->
-    {ok, Fd} = ram_file:open("", [write, read, binary]),
-    Callback = fun(_, Collector) ->
-        registry_collect_callback(Fd, Registry, Collector)
-    end,
-    prometheus_registry:collect(Registry, Callback),
-    file:write(Fd, "\n"),
-    {ok, Size} = ram_file:get_size(Fd),
-    {ok, Str} = file:pread(Fd, 0, Size),
-    ok = file:close(Fd),
-    Str.
+    format_into(Registry, fun format_into_binary/2, <<>>).
+
+format_into_binary(Acc, Data) ->
+    <<Acc/binary, Data/binary>>.
+
+?DOC("""
+Formats `Registry` using the latest text format, passing the binary data for
+each collector to the format function.
+""").
+-spec format_into(
+    Registry :: prometheus_registry:registry(), fun((term(), binary()) -> term()), term()
+) -> term().
+format_into(Registry, Fmt, State) ->
+    State1 = lists:foldl(
+        format_into_collector_fn(Registry, Fmt), State, prometheus_registry:collectors(Registry)
+    ),
+    Fmt(State1, <<"\n">>).
+
+format_into_collector_fn(Registry, Fmt) ->
+    fun(Collector, Acc) ->
+        put(?MODULE, Acc),
+        prometheus_collector:collect_mf(
+            Registry, Collector, format_into_create_mf_callback_fn(Fmt)
+        ),
+        erase(?MODULE)
+    end.
+
+format_into_create_mf_callback_fn(Fmt) ->
+    fun(#'MetricFamily'{name = Name0, help = Help, type = Type, metric = Metrics}) ->
+        %% eagerly convert the name to a binary so we can copy more efficiently
+        %% in `render_metrics/3`
+        Name = iolist_to_binary(Name0),
+        Prologue = <<
+            "# TYPE ",
+            Name/binary,
+            " ",
+            (string_type(Type))/binary,
+            "\n# HELP ",
+            Name/binary,
+            " ",
+            (escape_metric_help(Help))/binary,
+            "\n"
+        >>,
+        Bin = render_metrics(Prologue, Name, Metrics),
+        put(?MODULE, Fmt(Bin, erase(?MODULE)))
+    end.
 
 ?DOC("""
 Escapes the backslash (\\), double-quote (\"), and line feed (\\n) characters
@@ -83,29 +119,6 @@ escape_label_value(LValue) when is_list(LValue) ->
     escape_label_value(iolist_to_binary(LValue));
 escape_label_value(Value) ->
     erlang:error({invalid_value, Value}).
-
-registry_collect_callback(Fd, Registry, Collector) ->
-    Callback = fun(#'MetricFamily'{name = Name0, help = Help, type = Type, metric = Metrics}) ->
-        %% eagerly convert the name to a binary so we can copy more efficiently
-        %% in `render_metrics/3`
-        Name = iolist_to_binary(Name0),
-        Prologue = <<
-            "# TYPE ",
-            Name/binary,
-            " ",
-            (string_type(Type))/binary,
-            "\n# HELP ",
-            Name/binary,
-            " ",
-            (escape_metric_help(Help))/binary,
-            "\n"
-        >>,
-        %% file:write/2 is an expensive operation, as it goes through a port driver.
-        %% Instead a large chunk of bytes is being collected here, in a
-        %% way that triggers binary append optimization in ERTS.
-        file:write(Fd, render_metrics(Name, Metrics, Prologue))
-    end,
-    prometheus_collector:collect_mf(Registry, Collector, Callback).
 
 render_metrics(Bytes, _Name, []) ->
     Bytes;
