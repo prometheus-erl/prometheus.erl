@@ -101,7 +101,7 @@ format_into_create_mf_callback_fn(Fmt) ->
             "\n"
         >>,
         Bin = render_metrics(Prologue, Name, Metrics),
-        put(?MODULE, Fmt(Bin, erase(?MODULE)))
+        put(?MODULE, Fmt(erase(?MODULE), Bin))
     end.
 
 ?DOC("""
