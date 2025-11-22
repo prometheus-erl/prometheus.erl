@@ -55,7 +55,8 @@ prometheus_format_test_() ->
         fun test_quantile_dsummary/1,
         fun test_histogram/1,
         fun test_histogram_float/1,
-        fun test_dhistogram/1
+        fun test_dhistogram/1,
+        fun test_format_into/1
     ]}.
 
 content_type_test() ->
@@ -301,4 +302,33 @@ test_dhistogram(_) ->
             "\n"
         >>,
         prometheus_text_format:format()
+    ).
+
+test_format_into(_) ->
+    prometheus_gauge:new([{name, pool_size}, {help, "MongoDB Connections pool size"}]),
+    prometheus_gauge:set(pool_size, 365),
+    prometheus_counter:new([{name, http_requests_total}, {help, "Http request count"}]),
+    prometheus_counter:inc(http_requests_total),
+
+    {ok, Fd} = ram_file:open("", [write, read, binary]),
+    Fmt = fun(Size, Data) ->
+        file:write(Fd, Data),
+        Size + byte_size(Data)
+    end,
+    Size = prometheus_text_format:format_into(default, Fmt, 0),
+    ?assertEqual({ok, Size}, ram_file:get_size(Fd)),
+    {ok, Buf} = file:pread(Fd, 0, Size),
+    ok = file:close(Fd),
+
+    ?_assertEqual(
+        <<
+            "# TYPE pool_size gauge\n"
+            "# HELP pool_size MongoDB Connections pool size\n"
+            "pool_size 365\n"
+            "# TYPE http_requests_total counter\n"
+            "# HELP http_requests_total Http request count\n"
+            "http_requests_total 1\n"
+            "\n"
+        >>,
+        Buf
     ).
