@@ -9,12 +9,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     container:
-      image: erlang:27
+      image: erlang:28
     permissions:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - run: chown --recursive --reference=/ .
       - run: git config --global --add safe.directory '*'

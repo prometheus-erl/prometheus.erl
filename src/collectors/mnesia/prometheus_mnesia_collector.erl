@@ -67,8 +67,6 @@ By default all metrics are enabled.
 
 -export([deregister_cleanup/1, collect_mf/2]).
 
--import(prometheus_model_helpers, [create_mf/4]).
-
 -include("prometheus.hrl").
 
 -behaviour(prometheus_collector).
@@ -99,7 +97,9 @@ collect_mf(_Registry, Callback) ->
     ok.
 
 add_metric_family({Name, Type, Help, Metrics}, Callback) ->
-    Callback(create_mf(?METRIC_NAME(Name), Help, Type, catch_all(Metrics))).
+    Callback(
+        prometheus_model_helpers:create_mf(?METRIC_NAME(Name), Help, Type, catch_all(Metrics))
+    ).
 
 %%====================================================================
 %% Private Parts
@@ -131,15 +131,11 @@ metrics(EnabledMetrics) ->
         {restarted_transactions_total, counter, "Total number of transaction restarts.", fun() ->
             mnesia:system_info(transaction_restarts)
         end},
-        {memory_usage_bytes, gauge, "Total number of bytes allocated by all mnesia tables", fun() ->
-                get_memory_usage()
-            end},
-        {tablewise_memory_usage_bytes, gauge, "Number of bytes allocated per mnesia table", fun() ->
-                get_tablewise_memory_usage()
-            end},
-        {tablewise_size, gauge, "Number of rows present per table", fun() ->
-            get_tablewise_size()
-        end}
+        {memory_usage_bytes, gauge, "Total number of bytes allocated by all mnesia tables",
+            fun get_memory_usage/0},
+        {tablewise_memory_usage_bytes, gauge, "Number of bytes allocated per mnesia table",
+            fun get_tablewise_memory_usage/0},
+        {tablewise_size, gauge, "Number of rows present per table", fun get_tablewise_size/0}
     ].
 
 %%====================================================================

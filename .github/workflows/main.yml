@@ -15,10 +15,10 @@ jobs:
     strategy:
       matrix:
         otp: ['28', '27', '26']
-        rebar3: ['3.25']
+        rebar3: ['3.27']
     runs-on: 'ubuntu-24.04'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
@@ -46,7 +46,7 @@ jobs:
     name: promtool
     runs-on: 'ubuntu-24.04'
     steps:
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: 'stable'
       - run: |
@@ -70,11 +70,11 @@ jobs:
           # Delete downloaded files
           rm -rf prometheus-$VERSION.$ARCH
           rm -rf prometheus-$VERSION.$ARCH.tar.gz
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: erlef/setup-beam@v1
         with:
           otp-version: '28'
-          rebar3-version: '3.25'
+          rebar3-version: '3.27'
       - run: rebar3 compile
       - run: |
           set -e
