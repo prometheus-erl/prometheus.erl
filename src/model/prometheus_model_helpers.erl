@@ -53,6 +53,8 @@ Probably will be used with `m:prometheus_collector`.
 
 -include("prometheus_model.hrl").
 
+-compile({inline, [label_pair/1, label_pair/2, gauge_metric/2, counter_metric/2]}).
+
 %%%===================================================================
 %%% Public API
 %%%===================================================================
@@ -100,6 +102,17 @@ Create Metric Family of `Type`, `Name` and `Help`.
     MetricFamily :: prometheus_model:'MetricFamily'().
 create_mf(Name, Help, Type, Metrics) when is_map(Metrics) ->
     create_mf(Name, Help, Type, maps:to_list(Metrics));
+create_mf(Name, Help, Type, [First | _] = Metrics0) when
+    is_list(Metrics0), is_record(First, 'Metric')
+->
+    %% Fast path: metrics are already #'Metric'() records, skip metrics_from_tuples
+    Metrics = filter_undefined_metrics(Metrics0),
+    #'MetricFamily'{
+        name = ensure_binary_or_string(Name),
+        help = ensure_binary_or_string(Help),
+        type = ensure_mf_type(Type),
+        metric = Metrics
+    };
 create_mf(Name, Help, Type, Metrics0) ->
     Metrics = metrics_from_tuples(Type, Metrics0),
     #'MetricFamily'{
@@ -340,15 +353,18 @@ fail with an error.
 label_pairs(B) when is_binary(B) ->
     B;
 label_pairs(Labels) when is_list(Labels) ->
-    lists:map(fun label_pair/1, Labels);
+    [label_pair(L) || L <- Labels];
 label_pairs(Labels) when is_map(Labels) ->
-    lists:map(fun label_pair/1, maps:to_list(Labels)).
+    [label_pair(Name, Value) || Name := Value <- Labels].
 
 ?DOC("""
 Creates `prometheus_model:`LabelPair'()' from \{Name, Value\} tuple.
 """).
 -spec label_pair(prometheus:label()) -> prometheus_model:'LabelPair'().
 label_pair({Name, Value}) ->
+    label_pair(Name, Value).
+
+label_pair(Name, Value) ->
     #'LabelPair'{
         name = ensure_binary_or_string(Name),
         value = ensure_binary_or_string(Value)
@@ -411,6 +427,8 @@ ensure_binary_or_string(Val) when is_atom(Val) -> atom_to_binary(Val, utf8);
 %% FIXME: validate utf8
 ensure_binary_or_string(Val) when is_list(Val) -> Val;
 ensure_binary_or_string(Val) when is_binary(Val) -> Val;
+ensure_binary_or_string(Val) when is_integer(Val) -> integer_to_binary(Val);
+ensure_binary_or_string(Val) when is_float(Val) -> float_to_binary(Val, [short]);
 ensure_binary_or_string(Val) -> io_lib:format("~p", [Val]).
 
 ?DOC(false).

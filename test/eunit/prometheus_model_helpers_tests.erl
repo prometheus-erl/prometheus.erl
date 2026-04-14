@@ -585,7 +585,8 @@ ensure_binary_or_string_test() ->
     ?assertEqual(<<"qwe">>, prometheus_model_helpers:ensure_binary_or_string(qwe)),
     ?assertEqual("qwe", prometheus_model_helpers:ensure_binary_or_string("qwe")),
     ?assertEqual(<<"qwe">>, prometheus_model_helpers:ensure_binary_or_string(<<"qwe">>)),
-    ?assertEqual(["2"], prometheus_model_helpers:ensure_binary_or_string(2)).
+    ?assertEqual(<<"2">>, prometheus_model_helpers:ensure_binary_or_string(2)),
+    ?assertEqual(<<"1.5">>, prometheus_model_helpers:ensure_binary_or_string(1.5)).
 
 create_mf_test() ->
     ?assertMatch(
@@ -651,6 +652,21 @@ create_mf_test() ->
             ]
         },
         create_mf(<<"create_mf_with_map">>, "help", gauge, #{#{<<"l1">> => <<"v1">>} => my_value})
+    ),
+
+    %% Fast path: list of #'Metric'() is used as-is (no metrics_from_tuples)
+    PrebuiltMetric = #'Metric'{
+        label = [#'LabelPair'{name = <<"k">>, value = <<"v">>}],
+        gauge = #'Gauge'{value = 42}
+    },
+    ?assertMatch(
+        #'MetricFamily'{
+            name = <<"fast_path">>,
+            help = <<"help">>,
+            type = 'GAUGE',
+            metric = [PrebuiltMetric]
+        },
+        prometheus_model_helpers:create_mf(<<"fast_path">>, <<"help">>, gauge, [PrebuiltMetric])
     ).
 
 collect_metrics(g1, _Data) ->
