@@ -35,7 +35,7 @@ http_request_duration_milliseconds_sum{method=\"post\"} 4350
 -include("prometheus_model.hrl").
 
 -behaviour(prometheus_format).
--compile({inline, [render_label_pair/1]}).
+-compile({inline, [render_label_pair/1, render_series/4, render_value/2]}).
 
 ?DOC("""
 Returns content type of the latest \[text format](https://bit.ly/2cxSuJP).
