@@ -43,7 +43,7 @@ collect_mf(_Registry, Callback) ->
                           Memory)),
     ok.
 
-collect_metrics(erlang_vm_bytes_total, Memory) ->
+collect_metrics(_Name, Memory) ->
     prometheus_model_helpers:gauge_metrics(
       [
         {[{kind, system}], proplists:get_value(system,  Memory)},

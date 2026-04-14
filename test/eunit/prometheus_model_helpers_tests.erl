@@ -661,6 +661,27 @@ create_mf_test() ->
         prometheus_model_helpers:create_mf(<<"fast_path">>, <<"help">>, gauge, [PrebuiltMetric])
     ).
 
+%% Test that prometheus_metric:metrics/2 normalizes old-format ETS entries
+%% (2-tuple {Labels, Help}) into the new 3-tuple {Labels, HelpBin, NameBin}.
+%% This covers the backward-compat clause in normalize_mf_row/1, reachable
+%% during hot upgrades from nodes that predate the pre-computed binary change.
+normalize_mf_row_backward_compat_test() ->
+    Table = ?PROMETHEUS_GAUGE_TABLE,
+    Registry = test_compat_registry,
+    Name = test_compat_metric,
+    Labels = [label_a],
+    Help = "Old format help",
+    OldTuple = {{Registry, mf, Name}, {Labels, Help}, [], undefined, undefined},
+    ets:insert(Table, OldTuple),
+    try
+        [[Name, {Labels, HelpBin, NameBin}, [], undefined, undefined]] =
+            prometheus_metric:metrics(Table, Registry),
+        ?assertEqual(<<"Old format help">>, HelpBin),
+        ?assertEqual(<<"test_compat_metric">>, NameBin)
+    after
+        ets:delete(Table, {Registry, mf, Name})
+    end.
+
 collect_metrics(g1, _Data) ->
     prometheus_model_helpers:gauge_metric(g1_value).
 
