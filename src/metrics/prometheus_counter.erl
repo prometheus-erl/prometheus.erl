@@ -336,15 +336,17 @@ deregister_cleanup(Registry) ->
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
-        Callback(create_counter(Name, Help, {CLabels, Labels, Registry}))
-     || [Name, {Labels, Help}, CLabels, _, _] <- prometheus_metric:metrics(?TABLE, Registry)
+        Callback(create_counter(NameBin, HelpBin, {CLabels, Labels, Registry, Name}))
+     || [Name, {Labels, HelpBin, NameBin}, CLabels, _, _] <- prometheus_metric:metrics(
+            ?TABLE, Registry
+        )
     ],
     ok.
 
 ?DOC(false).
 -spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
-collect_metrics(Name, {CLabels, Labels, Registry}) ->
+collect_metrics(_NameBin, {CLabels, Labels, Registry, Name}) ->
     MFValues = load_all_values(Registry, Name),
     LabelValues = reduce_label_values(MFValues),
     Fun = fun(VLabels, Value) ->

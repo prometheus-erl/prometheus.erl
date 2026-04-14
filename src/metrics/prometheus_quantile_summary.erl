@@ -381,15 +381,15 @@ deregister_cleanup(Registry) ->
 collect_mf(Registry, Callback) ->
     Metrics = prometheus_metric:metrics(?TABLE, Registry),
     [
-        Callback(create_summary(Name, Help, {CLabels, Labels, Registry, DU, Data}))
-     || [Name, {Labels, Help}, CLabels, DU, Data] <- Metrics
+        Callback(create_summary(NameBin, HelpBin, {CLabels, Labels, Registry, DU, Data, Name}))
+     || [Name, {Labels, HelpBin, NameBin}, CLabels, DU, Data] <- Metrics
     ],
     ok.
 
 ?DOC(false).
 -spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
-collect_metrics(Name, {CLabels, Labels, Registry, _DU, _Configuration}) ->
+collect_metrics(_NameBin, {CLabels, Labels, Registry, _DU, _Configuration, Name}) ->
     Fun = fun model_summary_metric/6,
     loop_through_keys(Name, Fun, CLabels, Labels, Registry).
 

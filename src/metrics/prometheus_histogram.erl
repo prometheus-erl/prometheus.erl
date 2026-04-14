@@ -495,15 +495,17 @@ deregister_cleanup(Registry) ->
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
-        Callback(create_histogram(Name, Help, {CLabels, Labels, Registry, DU, Buckets}))
-     || [Name, {Labels, Help}, CLabels, DU, Buckets] <- prometheus_metric:metrics(?TABLE, Registry)
+        Callback(create_histogram(NameBin, HelpBin, {CLabels, Labels, Registry, DU, Buckets, Name}))
+     || [Name, {Labels, HelpBin, NameBin}, CLabels, DU, Buckets] <- prometheus_metric:metrics(
+            ?TABLE, Registry
+        )
     ],
     ok.
 
 ?DOC(false).
 -spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
-collect_metrics(Name, {CLabels, Labels, Registry, DU, Bounds}) ->
+collect_metrics(_NameBin, {CLabels, Labels, Registry, DU, Bounds, Name}) ->
     MFValues = load_all_values(Registry, Name, Bounds),
     LabelValuesMap = reduce_label_values(MFValues),
     Fun = fun(LabelValues, Stat, L) ->

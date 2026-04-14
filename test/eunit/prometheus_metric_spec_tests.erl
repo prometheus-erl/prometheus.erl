@@ -189,14 +189,14 @@ extract_common_params_test() ->
     ),
 
     ?assertEqual(
-        {default, "qwe", [], "qwe", [], undefined, undefined},
+        {default, "qwe", [], "qwe", [], undefined, undefined, <<"qwe">>, <<"qwe">>},
         prometheus_metric_spec:extract_common_params([
             {name, "qwe"},
             {help, "qwe"}
         ])
     ),
     ?assertEqual(
-        {qwe, "qwe", ["qwe"], "qwe", [{qwe, qwa}], undefined, data},
+        {qwe, "qwe", ["qwe"], "qwe", [{qwe, qwa}], undefined, data, <<"qwe">>, <<"qwe">>},
         prometheus_metric_spec:extract_common_params([
             {name, "qwe"},
             {labels, ["qwe"]},

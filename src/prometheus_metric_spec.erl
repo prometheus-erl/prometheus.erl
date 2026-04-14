@@ -20,7 +20,8 @@
     help/1,
     constant_labels/1,
     duration_unit/1,
-    extract_common_params/1
+    extract_common_params/1,
+    normalize_to_binary/1
 ]).
 
 -ifdef(TEST).
@@ -95,14 +96,16 @@ duration_unit_from_spec(Spec) ->
 
 ?DOC(false).
 -spec extract_common_params(Spec :: prometheus_metric:spec()) -> Return when
-    Return :: {Registry, Name, Labels, Help, CallTimeout, DurationUnit, Data},
+    Return :: {Registry, Name, Labels, Help, CallTimeout, DurationUnit, Data, NameBin, HelpBin},
     Registry :: prometheus_registry:registry(),
     Name :: prometheus_metric:name(),
     Labels :: prometheus_metric:labels(),
     Help :: prometheus_metric:help(),
     CallTimeout :: [{atom(), term()}],
     DurationUnit :: prometheus_time:maybe_duration_unit(),
-    Data :: dynamic().
+    Data :: dynamic(),
+    NameBin :: binary(),
+    HelpBin :: binary().
 extract_common_params(Spec) ->
     Registry = registry(Spec),
     Name = name(Spec),
@@ -111,7 +114,18 @@ extract_common_params(Spec) ->
     Data = data(Spec),
     CallTimeout = constant_labels(Spec),
     DurationUnit = duration_unit(Spec),
-    {Registry, Name, Labels, Help, CallTimeout, DurationUnit, Data}.
+    NameBin = normalize_to_binary(Name),
+    HelpBin = normalize_to_binary(Help),
+    {Registry, Name, Labels, Help, CallTimeout, DurationUnit, Data, NameBin, HelpBin}.
+
+?DOC(false).
+-spec normalize_to_binary(Val :: term()) -> binary().
+normalize_to_binary(Val) when is_binary(Val) -> Val;
+normalize_to_binary(Val) when is_atom(Val) -> atom_to_binary(Val, utf8);
+normalize_to_binary(Val) when is_list(Val) -> iolist_to_binary(Val);
+normalize_to_binary(Val) when is_integer(Val) -> integer_to_binary(Val);
+normalize_to_binary(Val) when is_float(Val) -> float_to_binary(Val, [short]);
+normalize_to_binary(Val) -> iolist_to_binary(io_lib:format("~p", [Val])).
 
 ?DOC(false).
 ?DOC(#{equiv => get_value(Key, Spec, undefined)}).

@@ -529,15 +529,17 @@ deregister_cleanup(Registry) ->
 -spec collect_mf(prometheus_registry:registry(), prometheus_collector:collect_mf_callback()) -> ok.
 collect_mf(Registry, Callback) ->
     [
-        Callback(create_gauge(Name, Help, {CLabels, Labels, Registry, DU}))
-     || [Name, {Labels, Help}, CLabels, DU, _] <- prometheus_metric:metrics(?TABLE, Registry)
+        Callback(create_gauge(NameBin, HelpBin, {CLabels, Labels, Registry, DU, Name}))
+     || [Name, {Labels, HelpBin, NameBin}, CLabels, DU, _] <- prometheus_metric:metrics(
+            ?TABLE, Registry
+        )
     ],
     ok.
 
 ?DOC(false).
 -spec collect_metrics(prometheus_metric:name(), tuple()) ->
     [prometheus_model:'Metric'()].
-collect_metrics(Name, {CLabels, Labels, Registry, DU}) ->
+collect_metrics(_NameBin, {CLabels, Labels, Registry, DU, Name}) ->
     [
         prometheus_model_helpers:gauge_metric(
             CLabels ++ lists:zip(Labels, LabelValues),

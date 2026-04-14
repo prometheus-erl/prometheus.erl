@@ -147,10 +147,10 @@ insert_new_mf(Table, Module, Spec) ->
     Module :: atom(),
     Spec :: spec().
 insert_mf(Table, Module, Spec) ->
-    {Registry, Name, Labels, Help, CLabels, DurationUnit, Data} =
+    {Registry, Name, Labels, _Help, CLabels, DurationUnit, Data, NameBin, HelpBin} =
         prometheus_metric_spec:extract_common_params(Spec),
     prometheus_registry:register_collector(Registry, Module),
-    Tuple = {{Registry, mf, Name}, {Labels, Help}, CLabels, DurationUnit, Data},
+    Tuple = {{Registry, mf, Name}, {Labels, HelpBin, NameBin}, CLabels, DurationUnit, Data},
     case ets:insert_new(Table, Tuple) of
         true ->
             maybe_set_default(Module, Registry, Name, Labels),
@@ -189,7 +189,8 @@ check_mf_exists(Table, Registry, Name, LabelValues) ->
     case ets:lookup(Table, {Registry, mf, Name}) of
         [] ->
             erlang:error({unknown_metric, Registry, Name});
-        [{_, {Labels, _}, _, _, _} = MF] ->
+        [{_, E2, _, _, _} = MF] ->
+            Labels = element(1, E2),
             LVLength = length(LabelValues),
             case length(Labels) of
                 LVLength ->
@@ -215,8 +216,7 @@ check_mf_exists(Table, Registry, Name) ->
 ?DOC(false).
 -spec mf_labels(tuple()) -> dynamic().
 mf_labels(MF) ->
-    {Labels, _} = element(2, MF),
-    Labels.
+    element(1, element(2, MF)).
 
 ?DOC(false).
 -spec mf_constant_labels(tuple()) -> dynamic().
@@ -236,7 +236,23 @@ mf_data(MF) ->
 ?DOC(false).
 -spec metrics(ets:table(), prometheus_registry:registry()) -> dynamic().
 metrics(Table, Registry) ->
-    ets:match(Table, {{Registry, mf, '$1'}, '$2', '$3', '$4', '$5'}).
+    Rows = ets:match(Table, {{Registry, mf, '$1'}, '$2', '$3', '$4', '$5'}),
+    [normalize_mf_row(Row) || Row <- Rows].
+
+normalize_mf_row([Name, {Labels, HelpBin, NameBin}, C, D, Data]) when
+    is_binary(NameBin), is_binary(HelpBin)
+->
+    [Name, {Labels, HelpBin, NameBin}, C, D, Data];
+normalize_mf_row([Name, {Labels, Help}, C, D, Data]) ->
+    %% Backward compat: old ETS data had 2-tuple; normalize on read
+    [
+        Name,
+        {Labels, prometheus_metric_spec:normalize_to_binary(Help),
+            prometheus_metric_spec:normalize_to_binary(Name)},
+        C,
+        D,
+        Data
+    ].
 
 %%====================================================================
 %% Private Parts
