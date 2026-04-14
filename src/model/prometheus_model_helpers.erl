@@ -45,7 +45,6 @@ Probably will be used with `m:prometheus_collector`.
 
 -ifdef(TEST).
 -export([
-    filter_undefined_metrics/1,
     ensure_mf_type/1,
     ensure_binary_or_string/1
 ]).
@@ -106,12 +105,11 @@ create_mf(Name, Help, Type, [First | _] = Metrics0) when
     is_list(Metrics0), is_record(First, 'Metric')
 ->
     %% Fast path: metrics are already #'Metric'() records, skip metrics_from_tuples
-    Metrics = filter_undefined_metrics(Metrics0),
     #'MetricFamily'{
         name = ensure_binary_or_string(Name),
         help = ensure_binary_or_string(Help),
         type = ensure_mf_type(Type),
-        metric = Metrics
+        metric = [M || M <- Metrics0, M =/= undefined]
     };
 create_mf(Name, Help, Type, Metrics0) ->
     Metrics = metrics_from_tuples(Type, Metrics0),
@@ -389,10 +387,7 @@ histogram_bucket({Bound, Count}) ->
     }.
 
 metrics_from_tuples(Type, Metrics) ->
-    [
-        metric_from_tuple(Type, Metric)
-     || Metric <- filter_undefined_metrics(ensure_list(Metrics))
-    ].
+    [metric_from_tuple(Type, M) || M <- ensure_list(Metrics), M =/= undefined].
 
 metric_from_tuple(_, Metric) when is_record(Metric, 'Metric') ->
     Metric;
@@ -412,14 +407,6 @@ metric_from_tuple(untyped, Metric) ->
 -spec ensure_list(Val :: term()) -> list().
 ensure_list(Val) when is_list(Val) -> Val;
 ensure_list(Val) -> [Val].
-
-?DOC(false).
--spec filter_undefined_metrics([undefined | T]) -> [T].
-filter_undefined_metrics(Metrics) ->
-    lists:filter(fun not_undefined/1, Metrics).
-
-not_undefined(undefined) -> false;
-not_undefined(_) -> true.
 
 ?DOC(false).
 -spec ensure_binary_or_string(Val :: term()) -> binary() | string().

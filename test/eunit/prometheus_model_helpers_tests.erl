@@ -562,14 +562,6 @@ histogram_metric_test() ->
         prometheus_model_helpers:histogram_metric(LabelsMap, Buckets, Count, Sum)
     ).
 
-fitler_undefined_metrics_test() ->
-    ?assertEqual(
-        [1, 2, 3],
-        prometheus_model_helpers:filter_undefined_metrics(
-            [undefined, 1, undefined, 2, 3, undefined, undefined]
-        )
-    ).
-
 eunsure_mf_type_test() ->
     ?assertEqual('GAUGE', prometheus_model_helpers:ensure_mf_type(gauge)),
     ?assertEqual('COUNTER', prometheus_model_helpers:ensure_mf_type(counter)),
