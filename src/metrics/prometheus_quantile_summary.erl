@@ -54,7 +54,7 @@ It takes `error` and `bound` as in `t:ddskerl_ets:opts/0`.
 -export([
     new/1,
     declare/1,
-    set_default/2,
+    set_default/3,
     deregister/1,
     deregister/2,
     observe/2,
@@ -122,11 +122,23 @@ declare(Spec) ->
     Spec1 = validate_summary_spec(Spec),
     prometheus_metric:insert_mf(?TABLE, ?MODULE, Spec1).
 
-?DOC(false).
--spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
-set_default(Registry, Name) ->
-    #{error := Error, bound := Bound} = get_configuration(Registry, Name),
-    Key = key(Registry, Name, []),
+?DOC("""
+Pre-seeds a quantile summary series for `Registry`, `Name` and `LabelValues` with an empty
+initial state, if the series does not yet exist.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""").
+-spec set_default(
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values()
+) -> boolean().
+set_default(Registry, Name, LabelValues) ->
+    #{error := Error, bound := Bound} = get_configuration(Registry, Name, LabelValues),
+    Key = key(Registry, Name, LabelValues),
     ddskerl_ets:new(?TABLE, Key, Error, Bound).
 
 ?DOC(#{equiv => deregister(default, Name)}).
@@ -472,8 +484,8 @@ insert_metric(Registry, Name, LabelValues, Key) ->
     Configuration = Configuration0#{name => Key},
     ddskerl_ets:new(Configuration).
 
-get_configuration(Registry, Name) ->
-    MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name),
+get_configuration(Registry, Name, LabelValues) ->
+    MF = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
     prometheus_metric:mf_data(MF).
 
 key(Registry, Name, LabelValues) ->

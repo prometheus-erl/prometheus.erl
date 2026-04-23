@@ -27,7 +27,8 @@ prometheus_format_test_() ->
         fun test_collector1/1,
         fun test_collector2/1,
         fun test_collector3/1,
-        fun test_merge_logic_when_fetching_value/1
+        fun test_merge_logic_when_fetching_value/1,
+        fun test_set_default_with_labels/1
     ]}.
 
 test_merge_logic_when_fetching_value(_) ->
@@ -48,6 +49,36 @@ test_merge_logic_when_fetching_value(_) ->
                     (abs(90 - Q90) =< 1) andalso
                     (abs(95 - Q95) =< 1),
             Value
+        )
+    ].
+
+test_set_default_with_labels(_) ->
+    prometheus_quantile_summary:new([
+        {name, orders_summary},
+        {labels, [department]},
+        {help, "Track orders count/total sum"}
+    ]),
+    %% Before seeding: labeled series is undefined
+    Undef = prometheus_quantile_summary:value(orders_summary, [electronics]),
+    %% Seed the labeled series
+    prometheus_quantile_summary:set_default(default, orders_summary, [electronics]),
+    %% After seeding: labeled series returns empty summary state
+    Seeded = prometheus_quantile_summary:value(orders_summary, [electronics]),
+    %% Idempotent: second call returns false, series is still empty summary state
+    Idempotent = prometheus_quantile_summary:set_default(default, orders_summary, [electronics]),
+    AfterIdempotent = prometheus_quantile_summary:value(orders_summary, [electronics]),
+    [
+        ?_assertEqual(undefined, Undef),
+        ?_assertMatch({0, 0, []}, Seeded),
+        ?_assertEqual(false, Idempotent),
+        ?_assertMatch({0, 0, []}, AfterIdempotent),
+        ?_assertError(
+            {unknown_metric, default, unknown_qsummary},
+            prometheus_quantile_summary:set_default(default, unknown_qsummary, [electronics])
+        ),
+        ?_assertError(
+            {invalid_metric_arity, 2, 1},
+            prometheus_quantile_summary:set_default(default, orders_summary, [electronics, extra])
         )
     ].
 

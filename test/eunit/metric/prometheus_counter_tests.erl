@@ -15,7 +15,8 @@ prometheus_format_test_() ->
         fun test_values/1,
         fun test_collector1/1,
         fun test_collector2/1,
-        fun test_collector3/1
+        fun test_collector3/1,
+        fun test_set_default_with_labels/1
     ]}.
 
 test_registration(_) ->
@@ -310,5 +311,35 @@ test_collector3(_) ->
                 }
             ],
             MFList
+        )
+    ].
+
+test_set_default_with_labels(_) ->
+    prometheus_counter:new([
+        {name, http_requests_total},
+        {labels, [method]},
+        {help, "Http request count"}
+    ]),
+    %% Before seeding: labeled series is undefined
+    Undef = prometheus_counter:value(http_requests_total, [get]),
+    %% Seed the labeled series
+    prometheus_counter:set_default(default, http_requests_total, [get]),
+    %% After seeding: labeled series returns 0
+    Seeded = prometheus_counter:value(http_requests_total, [get]),
+    %% Idempotent: second call returns false, series is still 0
+    Idempotent = prometheus_counter:set_default(default, http_requests_total, [get]),
+    AfterIdempotent = prometheus_counter:value(http_requests_total, [get]),
+    [
+        ?_assertEqual(undefined, Undef),
+        ?_assertEqual(0, Seeded),
+        ?_assertEqual(false, Idempotent),
+        ?_assertEqual(0, AfterIdempotent),
+        ?_assertError(
+            {unknown_metric, default, unknown_counter},
+            prometheus_counter:set_default(default, unknown_counter, [get])
+        ),
+        ?_assertError(
+            {invalid_metric_arity, 2, 1},
+            prometheus_counter:set_default(default, http_requests_total, [get, extra])
         )
     ].

@@ -164,6 +164,36 @@ Common options are:
 
 Histogram also accepts `buckets` option. Please refer to respective modules docs for the more information.
 
+#### Default series
+
+Metrics with no labels automatically get a zero-value series created at declaration time.
+Metrics **with** labels do **not** create any series automatically — a series only appears after the
+first write (e.g. `inc`, `observe`, `set`).
+
+If you need a labeled series to be present in the output before the first write, call
+`prometheus_metric:set_default(MetricModule, Registry, Name, LabelValues)` explicitly:
+
+```erlang
+%% Declare a labeled counter
+prometheus_counter:declare([{name, http_requests_total}, {labels, [method]}, {help, ""}]),
+%% Pre-seed specific label combinations so they appear with value 0 immediately
+prometheus_metric:set_default(prometheus_counter, default, http_requests_total, [get]),
+prometheus_metric:set_default(prometheus_counter, default, http_requests_total, [post]).
+```
+
+If you are using the default registry, you can use the shorter
+`prometheus_metric:set_default(MetricModule, Name, LabelValues)` form:
+
+```erlang
+%% Equivalent to the previous example, but defaults Registry to `default`
+prometheus_metric:set_default(prometheus_counter, http_requests_total, [get]),
+prometheus_metric:set_default(prometheus_counter, http_requests_total, [post]).
+```
+
+Both `set_default/3` and `set_default/4` are idempotent: calling them again for an already-created series is a no-op.
+It raises `{unknown_metric, Registry, Name}` if the metric has not been declared, and
+`{invalid_metric_arity, Present, Expected}` if the label value count does not match.
+
 ### Exposition Formats
 
 - [`prometheus_text_format`](https://github.com/deadtrickster/prometheus.erl/blob/master/doc/prometheus_text_format.md) - renders metrics for a given registry (default is `default`) in text format;

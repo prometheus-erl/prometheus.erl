@@ -58,7 +58,7 @@ inc(Caller) ->
     declare/1,
     deregister/1,
     deregister/2,
-    set_default/2,
+    set_default/3,
     inc/1,
     inc/2,
     inc/3,
@@ -146,10 +146,25 @@ deregister(Registry, Name) ->
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
-?DOC(false).
--spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
-set_default(Registry, Name) ->
-    ets:insert_new(?TABLE, {key(Registry, Name, []), 0, 0}).
+?DOC("""
+Pre-seeds a counter series for `Registry`, `Name` and `LabelValues` with an initial value of 0,
+if the series does not yet exist.
+
+Useful for ensuring a labeled series is present in output before any increments happen.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if counter with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""").
+-spec set_default(
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values()
+) -> boolean().
+set_default(Registry, Name, LabelValues) ->
+    prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
+    ets:insert_new(?TABLE, {key(Registry, Name, LabelValues), 0, 0}).
 
 ?DOC(#{equiv => inc(default, Name, [], 1)}).
 -spec inc(prometheus_metric:name()) -> ok.

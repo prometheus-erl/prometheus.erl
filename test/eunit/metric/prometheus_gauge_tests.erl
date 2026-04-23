@@ -23,7 +23,8 @@ prometheus_format_test_() ->
         fun test_values/1,
         fun test_collector1/1,
         fun test_collector2/1,
-        fun test_collector3/1
+        fun test_collector3/1,
+        fun test_set_default_with_labels/1
     ]}.
 
 test_registration(_) ->
@@ -559,5 +560,35 @@ test_collector3(_) ->
                 }
             ],
             MFList
+        )
+    ].
+
+test_set_default_with_labels(_) ->
+    prometheus_gauge:new([
+        {name, pool_size},
+        {labels, [client]},
+        {help, "Pool size"}
+    ]),
+    %% Before seeding: labeled series is undefined
+    Undef = prometheus_gauge:value(pool_size, [redis]),
+    %% Seed the labeled series
+    prometheus_gauge:set_default(default, pool_size, [redis]),
+    %% After seeding: labeled series returns 0
+    Seeded = prometheus_gauge:value(pool_size, [redis]),
+    %% Idempotent: second call returns false, series is still 0
+    Idempotent = prometheus_gauge:set_default(default, pool_size, [redis]),
+    AfterIdempotent = prometheus_gauge:value(pool_size, [redis]),
+    [
+        ?_assertEqual(undefined, Undef),
+        ?_assertEqual(0, Seeded),
+        ?_assertEqual(false, Idempotent),
+        ?_assertEqual(0, AfterIdempotent),
+        ?_assertError(
+            {unknown_metric, default, unknown_gauge},
+            prometheus_gauge:set_default(default, unknown_gauge, [redis])
+        ),
+        ?_assertError(
+            {invalid_metric_arity, 2, 1},
+            prometheus_gauge:set_default(default, pool_size, [redis, extra])
         )
     ].

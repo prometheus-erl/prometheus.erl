@@ -44,7 +44,7 @@ observe_response(Size) ->
     declare/1,
     deregister/1,
     deregister/2,
-    set_default/2,
+    set_default/3,
     observe/2,
     observe/3,
     observe/4,
@@ -133,10 +133,25 @@ deregister(Registry, Name) ->
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
-?DOC(false).
--spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> boolean().
-set_default(Registry, Name) ->
-    ets:insert_new(?TABLE, {key(Registry, Name, []), 0, 0, 0}).
+?DOC("""
+Pre-seeds a summary series for `Registry`, `Name` and `LabelValues` with zero count and zero sum,
+if the series does not yet exist.
+
+Useful for ensuring a labeled series is present in output before any observations happen.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if summary with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""").
+-spec set_default(
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values()
+) -> boolean().
+set_default(Registry, Name, LabelValues) ->
+    prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
+    ets:insert_new(?TABLE, {key(Registry, Name, LabelValues), 0, 0, 0}).
 
 ?DOC(#{equiv => observe(default, Name, [], Value)}).
 -spec observe(prometheus_metric:name(), number()) -> ok.
