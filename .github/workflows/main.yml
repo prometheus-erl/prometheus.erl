@@ -14,7 +14,7 @@ jobs:
     name: OTP ${{matrix.otp}} - rebar3 ${{matrix.rebar3}}
     strategy:
       matrix:
-        otp: ['28', '27', '26']
+        otp: ['29', '28', '27', '26']
         rebar3: ['3.27']
     runs-on: 'ubuntu-24.04'
     steps:
@@ -25,17 +25,17 @@ jobs:
           rebar3-version: ${{matrix.rebar3}}
       - run: rebar3 compile
       - run: rebar3 fmt --check
-        if: ${{ matrix.otp == '28' }}
+        if: ${{ matrix.otp == '29' }}
       - run: rebar3 lint
       - run: rebar3 xref
       - run: rebar3 dialyzer
       - run: rebar3 eunit
       - run: rebar3 ex_doc
       - run: rebar3 do cover, covertool generate
-        if: ${{ matrix.otp == '28' }}
+        if: ${{ matrix.otp == '29' }}
       - name: Upload code coverage
         uses: codecov/codecov-action@v5
-        if: ${{ matrix.otp == '28' }}
+        if: ${{ matrix.otp == '29' }}
         with:
           files: _build/test/covertool/prometheus.covertool.xml
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -73,7 +73,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: '28'
+          otp-version: '29'
           rebar3-version: '3.27'
       - run: rebar3 compile
       - run: |
