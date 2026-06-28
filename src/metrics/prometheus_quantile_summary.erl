@@ -275,11 +275,23 @@ Raises:
     LabelValues :: prometheus_metric:label_values().
 reset(Registry, Name, LabelValues) ->
     _ = prometheus_metric:check_mf_exists(?TABLE, Registry, Name, LabelValues),
-    [
-        catch ddskerl_ets:reset(?TABLE, {Registry, Name, LabelValues, SId})
+    _ = [
+        safe_reset(Registry, Name, LabelValues, SId)
      || SId <- schedulers_seq()
     ],
     true.
+
+safe_reset(Registry, Name, LabelValues, SId) ->
+    try
+        ddskerl_ets:reset(?TABLE, {Registry, Name, LabelValues, SId})
+    catch
+        Class:Reason:Stacktrace ->
+            error_logger:warning_msg(
+                "prometheus_quantile_summary reset failed: ~p:~p~n~p~n",
+                [Class, Reason, Stacktrace]
+            ),
+            ok
+    end.
 
 ?DOC(#{equiv => value(default, Name, [])}).
 -spec value(prometheus_metric:name()) ->
