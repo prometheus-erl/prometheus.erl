@@ -9,7 +9,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     container:
-      image: erlang:28
+      image: erlang:29
     permissions:
       contents: write
     steps:
