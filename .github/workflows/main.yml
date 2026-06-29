@@ -18,7 +18,7 @@ jobs:
         rebar3: ['3.27']
     runs-on: 'ubuntu-24.04'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
@@ -34,7 +34,7 @@ jobs:
       - run: rebar3 do cover, covertool generate
         if: ${{ matrix.otp == '29' }}
       - name: Upload code coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         if: ${{ matrix.otp == '29' }}
         with:
           files: _build/test/covertool/prometheus.covertool.xml
@@ -70,7 +70,7 @@ jobs:
           # Delete downloaded files
           rm -rf prometheus-$VERSION.$ARCH
           rm -rf prometheus-$VERSION.$ARCH.tar.gz
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: erlef/setup-beam@v1
         with:
           otp-version: '29'
