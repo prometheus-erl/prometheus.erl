@@ -35,7 +35,7 @@ jobs:
         if: ${{ matrix.otp == '29' }}
       - name: Upload code coverage
         uses: codecov/codecov-action@v7
-        if: ${{ matrix.otp == '29' }}
+        if: ${{ matrix.otp == '29' && github.actor != 'dependabot[bot]' }}
         with:
           files: _build/test/covertool/prometheus.covertool.xml
           token: ${{ secrets.CODECOV_TOKEN }}
