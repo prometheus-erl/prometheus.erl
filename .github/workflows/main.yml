@@ -46,7 +46,7 @@ jobs:
     name: promtool
     runs-on: 'ubuntu-24.04'
     steps:
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: 'stable'
       - run: |
