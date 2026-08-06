@@ -16,7 +16,8 @@ prometheus_format_test_() ->
         fun test_collector1/1,
         fun test_collector2/1,
         fun test_collector3/1,
-        fun test_values/1
+        fun test_values/1,
+        fun test_set_default_with_labels/1
     ]}.
 
 test_registration(_) ->
@@ -224,6 +225,31 @@ test_values(_) ->
                 {[{name, postgres}], false}
             ],
             lists:sort(prometheus_boolean:values(default, fuse_state))
+        )
+    ].
+
+test_set_default_with_labels(_) ->
+    prometheus_boolean:new([
+        {name, fuse_state},
+        {labels, [name]},
+        {help, "Fuse state"}
+    ]),
+    %% Before seeding: labeled series is undefined
+    Undef = prometheus_boolean:value(fuse_state, [myapp]),
+    %% Seed the labeled series
+    prometheus_boolean:set_default(default, fuse_state, [myapp]),
+    %% After seeding: labeled series returns undefined (boolean default)
+    Seeded = prometheus_boolean:value(fuse_state, [myapp]),
+    [
+        ?_assertEqual(undefined, Undef),
+        ?_assertEqual(undefined, Seeded),
+        ?_assertError(
+            {unknown_metric, default, unknown_boolean},
+            prometheus_boolean:set_default(default, unknown_boolean, [myapp])
+        ),
+        ?_assertError(
+            {invalid_metric_arity, 2, 1},
+            prometheus_boolean:set_default(default, fuse_state, [myapp, extra])
         )
     ].
 

@@ -41,7 +41,7 @@ fuse_event(Fuse, Event) ->
     declare/1,
     deregister/1,
     deregister/2,
-    set_default/2,
+    set_default/3,
     set/2,
     set/3,
     set/4,
@@ -127,10 +127,22 @@ deregister(Registry, Name) ->
     NumDeleted = ets:select_delete(?TABLE, deregister_select(Registry, Name)),
     {MFR, NumDeleted > 0}.
 
-?DOC(false).
--spec set_default(prometheus_registry:registry(), prometheus_metric:name()) -> ok.
-set_default(Registry, Name) ->
-    set(Registry, Name, [], undefined).
+?DOC("""
+Pre-seeds a boolean series for `Registry`, `Name` and `LabelValues` with the value `undefined`,
+if the series does not yet exist.
+
+Raises:
+
+* `{unknown_metric, Registry, Name}` error if boolean with name `Name` can't be found in `Registry`.
+* `{invalid_metric_arity, Present, Expected}` error if labels count mismatch.
+""").
+-spec set_default(
+    Registry :: prometheus_registry:registry(),
+    Name :: prometheus_metric:name(),
+    LabelValues :: prometheus_metric:label_values()
+) -> ok.
+set_default(Registry, Name, LabelValues) ->
+    set(Registry, Name, LabelValues, undefined).
 
 ?DOC(#{equiv => set(default, Name, [], Value)}).
 -spec set(prometheus_metric:name(), prometheus:prometheus_boolean()) -> ok.

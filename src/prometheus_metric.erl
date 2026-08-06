@@ -17,6 +17,8 @@ as well as handling metric labels and data.
 -export([
     insert_new_mf/3,
     insert_mf/3,
+    set_default/3,
+    set_default/4,
     deregister_mf/2,
     deregister_mf/3,
     check_mf_exists/3,
@@ -85,10 +87,11 @@ as well as handling metric labels and data.
 ?DOC("Inserts a new metric function into the table.").
 -callback declare(Spec :: spec()) -> boolean().
 
-?DOC("Sets the default metric function for the module.").
--callback set_default(Registry, Name) -> dynamic() when
-    Registry :: prometheus_registry:registry(),
-    Name :: name().
+?DOC("Sets the default (zero/initial) state for the metric series identified by Registry, Name and LabelValues.").
+-callback set_default(Registry :: prometheus_registry:registry(),
+                      Name :: name(),
+                      LabelValues :: label_values()) ->
+    dynamic().
 
 ?DOC("Removes a metric function by name.").
 -callback remove(Name :: name()) -> boolean() | no_return().
@@ -158,6 +161,20 @@ insert_mf(Table, Module, Spec) ->
         false ->
             false
     end.
+
+?DOC("Calls Module:set_default(default, Name, LabelValues). ").
+-spec set_default(Module :: module(), Name :: name(), LabelValues :: label_values()) -> dynamic().
+set_default(Module, Name, LabelValues) ->
+    set_default(Module, default, Name, LabelValues).
+
+?DOC("Calls Module:set_default(Registry, Name, LabelValues). ").
+-spec set_default(Module :: module(),
+                  Registry :: prometheus_registry:registry(),
+                  Name :: name(),
+                  LabelValues :: label_values()) ->
+    dynamic().
+set_default(Module, Registry, Name, LabelValues) ->
+    Module:set_default(Registry, Name, LabelValues).
 
 ?DOC(false).
 -spec deregister_mf(Table, Registry) -> boolean() | no_return() when
@@ -264,7 +281,7 @@ normalize_mf_row([Name, {Labels, Help}, C, D, Data]) ->
     Name :: name(),
     Labels :: list().
 maybe_set_default(Module, Registry, Name, []) ->
-    Module:set_default(Registry, Name);
+    set_default(Module, Registry, Name, []);
 maybe_set_default(_, _, _, _) ->
     ok.
 

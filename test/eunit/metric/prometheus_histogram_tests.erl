@@ -21,7 +21,8 @@ prometheus_format_test_() ->
         fun test_values/1,
         fun test_collector1/1,
         fun test_collector2/1,
-        fun test_collector3/1
+        fun test_collector3/1,
+        fun test_set_default_with_labels/1
     ]}.
 
 test_registration_as_list(_) ->
@@ -780,5 +781,36 @@ test_collector3(_) ->
                 }
             ],
             MFList
+        )
+    ].
+
+test_set_default_with_labels(_) ->
+    prometheus_histogram:new([
+        {name, request_duration},
+        {labels, [method]},
+        {buckets, [5, 10]},
+        {help, "Request duration"}
+    ]),
+    %% Before seeding: labeled series is undefined
+    Undef = prometheus_histogram:value(request_duration, [get]),
+    %% Seed the labeled series
+    prometheus_histogram:set_default(default, request_duration, [get]),
+    %% After seeding: labeled series returns zero-count buckets and zero sum
+    Seeded = prometheus_histogram:value(request_duration, [get]),
+    %% Idempotent: second call returns false, seeded series is unchanged
+    Idempotent = prometheus_histogram:set_default(default, request_duration, [get]),
+    AfterIdempotent = prometheus_histogram:value(request_duration, [get]),
+    [
+        ?_assertEqual(undefined, Undef),
+        ?_assertEqual({[0, 0, 0], 0}, Seeded),
+        ?_assertEqual(false, Idempotent),
+        ?_assertEqual({[0, 0, 0], 0}, AfterIdempotent),
+        ?_assertError(
+            {unknown_metric, default, unknown_histogram},
+            prometheus_histogram:set_default(default, unknown_histogram, [get])
+        ),
+        ?_assertError(
+            {invalid_metric_arity, 2, 1},
+            prometheus_histogram:set_default(default, request_duration, [get, extra])
         )
     ].
