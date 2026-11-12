@@ -66,7 +66,7 @@ create_gauge(Name, Help, Data) ->
 -export([collect_mf_to_list/1]).
 -endif.
 
--export_type([collector/0, data/0, collect_mf_callback/0]).
+-export_type([collector/0, data/0, collect_mf_callback/0, metric_family_filter/0]).
 
 -compile({no_auto_import, [register/2]}).
 
@@ -95,6 +95,10 @@ create_gauge(Name, Help, Data) ->
 
 ?DOC("Callback for `collect_mf/3`").
 -type collect_mf_callback() :: fun((prometheus_model:'MetricFamily'()) -> dynamic()).
+
+?DOC("A function that drops or replaces a collected MetricFamily").
+-type metric_family_filter() ::
+    fun((prometheus_model:'MetricFamily'()) -> drop | prometheus_model:'MetricFamily'()).
 
 ?DOC("Should call `Callback` for each `MetricFamily` of this collector").
 -callback collect_mf(Registry, Callback) -> ok when
@@ -167,13 +171,34 @@ global_labels_callback_wrapper(GlobalLabels0, Callback) ->
     Collector :: collector(),
     Callback :: collect_mf_callback().
 collect_mf(Registry, Collector, Callback0) ->
-    Callback =
+    Callback1 =
         case application:get_env(prometheus, global_labels) of
             undefined -> Callback0;
             {ok, []} -> Callback0;
             {ok, GlobalLabels} -> global_labels_callback_wrapper(GlobalLabels, Callback0)
         end,
+    Callback = metric_family_filter_callback(Callback1),
     ok = Collector:collect_mf(Registry, Callback).
+
+-spec metric_family_filter_callback(collect_mf_callback()) -> collect_mf_callback().
+metric_family_filter_callback(Callback) ->
+    case application:get_env(prometheus, metric_family_filter) of
+        undefined ->
+            Callback;
+        {ok, Filter} when is_function(Filter, 1) ->
+            fun(MF) ->
+                case Filter(MF) of
+                    drop ->
+                        ok;
+                    FilteredMF = #'MetricFamily'{} ->
+                        Callback(FilteredMF);
+                    Other ->
+                        error({invalid_metric_family_filter_result, Other})
+                end
+            end;
+        {ok, Other} ->
+            error({invalid_metric_family_filter, Other})
+    end.
 
 -ifdef(TEST).
 ?DOC(false).

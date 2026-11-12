@@ -113,6 +113,39 @@ empty_labels_plus_global_labels_prerendering_test() ->
     ?assertEqual([[<<"node=\"some_value2\"">>]], get_labels(MFList, no_label_prerendered_mf)),
     ok.
 
+metric_family_filter_runs_before_global_labels_test() ->
+    MFList =
+        try
+            prometheus:start(),
+            prometheus_registry:register_collectors([?MODULE]),
+            application:set_env(prometheus, global_labels, [{node, some_value3}]),
+            application:set_env(
+                prometheus,
+                metric_family_filter,
+                fun
+                    (#'MetricFamily'{name = <<"regular_mf">>, metric = [#'Metric'{label = Labels}]}) ->
+                        ?assertEqual(
+                            [#'LabelPair'{name = <<"label">>, value = <<"regular">>}],
+                            Labels
+                        ),
+                        drop;
+                    (MF) ->
+                        MF
+                end
+            ),
+            prometheus_collector:collect_mf_to_list(?MODULE)
+        after
+            application:unset_env(prometheus, metric_family_filter),
+            application:unset_env(prometheus, global_labels),
+            prometheus_registry:deregister_collector(?MODULE)
+        end,
+    ?assertEqual([], get_labels(MFList, regular_mf)),
+    ?assertEqual(
+        [[#'LabelPair'{name = <<"node">>, value = <<"some_value3">>}]],
+        get_labels(MFList, no_label_mf)
+    ),
+    ok.
+
 get_labels(MFList, MFName) ->
     MFNameB = atom_to_binary(MFName, latin1),
     lists:filtermap(
